@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+  jpa:
+    show-sql: false
+
+server:
+  port: ${PORT:8080}
+
+app:
+  jwt:
+    access-token-ttl: 900000
+    refresh-token-ttl: 604800000
+  cors:
+    allowed-origins: ${CORS_ORIGINS}
+
+logging:
+  level:
+    com.springforge: WARN
+    root: WARN

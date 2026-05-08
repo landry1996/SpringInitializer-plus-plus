@@ -1,0 +1,37 @@
+# Java
+target/
+*.class
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Gradle
+.gradle/
+build/
+
+# Node/Angular
+node_modules/
+dist/
+.angular/
+.pnpm-store/
+
+# Environment
+.env
+*.env
+application-secret.yml
+application-secret.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated
+generated/
+*.zip

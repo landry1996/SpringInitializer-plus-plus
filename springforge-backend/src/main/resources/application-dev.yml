@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/springforge
+    username: springforge
+    password: springforge
+  jpa:
+    show-sql: true
+
+logging:
+  level:
+    com.springforge: DEBUG
+    org.springframework.modulith: DEBUG
