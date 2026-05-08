@@ -6,7 +6,7 @@
 
 ## Phase 1 — Foundations
 
-- [ ] **BLOC 1** — Project Scaffolding
+- [x] **BLOC 1** — Project Scaffolding
   - Spring Boot 3.3.x + Spring Modulith + Maven
   - Module structure (shared, user, template, blueprint, generator)
   - PostgreSQL + Flyway configuration
@@ -14,7 +14,7 @@
   - application.yml profiles (dev, test, prod)
   - Angular 18 project initialization (standalone components)
 
-- [ ] **BLOC 2** — Shared Kernel & Security
+- [x] **BLOC 2** — Shared Kernel & Security
   - Base domain classes (BaseEntity, DomainEvent)
   - Global exception handler (ApiError, no stacktrace)
   - Security config (JWT HS512, BCrypt 12, CORS)
@@ -22,7 +22,7 @@
   - Security headers
   - Correlation ID filter
 
-- [ ] **BLOC 3** — User Module
+- [x] **BLOC 3** — User Module
   - User entity + Role enum (ADMIN, USER)
   - Register / Login / Refresh / Logout use cases
   - JWT service (access + refresh token)
@@ -122,9 +122,9 @@
 
 | Bloc | Status | Date |
 |------|--------|------|
-| 1 | TODO | - |
-| 2 | TODO | - |
-| 3 | TODO | - |
+| 1 | DONE | 2026-05-08 |
+| 2 | DONE | 2026-05-08 |
+| 3 | DONE | 2026-05-08 |
 | 4 | TODO | - |
 | 5 | TODO | - |
 | 6 | TODO | - |
