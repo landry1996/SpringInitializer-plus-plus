@@ -35,7 +35,7 @@
 
 ## Phase 2 — Core Engine
 
-- [ ] **BLOC 4** — Blueprint Module
+- [x] **BLOC 4** — Blueprint Module
   - Blueprint domain (entity, constraints, defaults)
   - YAML/JSON blueprint loader
   - Built-in blueprints: Hexagonal, DDD, Layered, Microservices
@@ -43,7 +43,7 @@
   - Flyway migration V2 (blueprints)
   - Tests
 
-- [ ] **BLOC 5** — Template Module
+- [x] **BLOC 5** — Template Module
   - Template domain (entity, version, scope, hierarchy)
   - Freemarker integration (TemplateEngine adapter)
   - Template CRUD use cases
@@ -52,7 +52,7 @@
   - Flyway migration V3 (templates)
   - Tests
 
-- [ ] **BLOC 6** — Generator Module (Pipeline)
+- [x] **BLOC 6** — Generator Module (Pipeline)
   - GenerationRequest / Project configuration schema
   - Pipeline: ValidateStep -> ResolveStep -> GenerateStep -> PostProcessStep
   - Async execution (@Async + CompletableFuture)
@@ -125,9 +125,9 @@
 | 1 | DONE | 2026-05-08 |
 | 2 | DONE | 2026-05-08 |
 | 3 | DONE | 2026-05-08 |
-| 4 | TODO | - |
-| 5 | TODO | - |
-| 6 | TODO | - |
+| 4 | DONE | 2026-05-08 |
+| 5 | DONE | 2026-05-08 |
+| 6 | DONE | 2026-05-08 |
 | 7 | TODO | - |
 | 8 | TODO | - |
 | 9 | TODO | - |
