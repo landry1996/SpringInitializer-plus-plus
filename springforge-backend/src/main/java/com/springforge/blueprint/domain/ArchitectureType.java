@@ -6,6 +6,7 @@ public enum ArchitectureType {
     HEXAGONAL,
     DDD,
     CQRS,
+    EVENT_DRIVEN,
     MICROSERVICES,
     MODULITH
 }

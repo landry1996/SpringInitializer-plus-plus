@@ -47,7 +47,7 @@ public class GenerateStep implements PipelineStep {
 
             Map<String, Object> model = buildModel(context);
 
-            generatePom(projectDir, model);
+            generateBuildFile(projectDir, model, config);
             generateMainClass(projectDir, model);
             generateApplicationYml(projectDir, model, config);
             generateDockerfile(projectDir, model);
@@ -55,6 +55,14 @@ public class GenerateStep implements PipelineStep {
 
             if (config.infrastructure() != null && config.infrastructure().docker()) {
                 generateDockerCompose(projectDir, model, config);
+            }
+
+            if (config.infrastructure() != null && config.infrastructure().kubernetes()) {
+                generateKubernetesManifests(projectDir, model);
+            }
+
+            if (config.infrastructure() != null && config.infrastructure().ci() != null) {
+                generateCiCd(projectDir, model, config);
             }
 
             if (config.architecture() != null && config.architecture().modules() != null) {
@@ -120,9 +128,24 @@ public class GenerateStep implements PipelineStep {
         return deps;
     }
 
-    private void generatePom(Path projectDir, Map<String, Object> model) throws Exception {
-        String content = renderTemplate("core/common/pom.xml.ftl", model);
-        Files.writeString(projectDir.resolve("pom.xml"), content);
+    private void generateBuildFile(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
+        String buildTool = config.metadata().buildTool() != null ? config.metadata().buildTool().name() : "MAVEN";
+        model.put("buildTool", buildTool);
+
+        if ("GRADLE_KOTLIN".equals(buildTool)) {
+            Files.writeString(projectDir.resolve("build.gradle.kts"),
+                    renderTemplate("core/common/build.gradle.kts.ftl", model));
+            Files.writeString(projectDir.resolve("settings.gradle.kts"),
+                    renderTemplate("core/common/settings.gradle.kts.ftl", model));
+        } else if ("GRADLE_GROOVY".equals(buildTool)) {
+            Files.writeString(projectDir.resolve("build.gradle"),
+                    renderTemplate("core/common/build.gradle.ftl", model));
+            Files.writeString(projectDir.resolve("settings.gradle.kts"),
+                    renderTemplate("core/common/settings.gradle.kts.ftl", model));
+        } else {
+            Files.writeString(projectDir.resolve("pom.xml"),
+                    renderTemplate("core/common/pom.xml.ftl", model));
+        }
     }
 
     private void generateMainClass(Path projectDir, Map<String, Object> model) throws Exception {
@@ -181,6 +204,28 @@ public class GenerateStep implements PipelineStep {
         Files.writeString(projectDir.resolve("docker-compose.yml"), content);
     }
 
+    private void generateKubernetesManifests(Path projectDir, Map<String, Object> model) throws Exception {
+        Path k8sDir = projectDir.resolve("k8s");
+        Files.createDirectories(k8sDir);
+        Files.writeString(k8sDir.resolve("deployment.yaml"), renderTemplate("core/kubernetes/deployment.yaml.ftl", model));
+        Files.writeString(k8sDir.resolve("service.yaml"), renderTemplate("core/kubernetes/service.yaml.ftl", model));
+        Files.writeString(k8sDir.resolve("hpa.yaml"), renderTemplate("core/kubernetes/hpa.yaml.ftl", model));
+        Files.writeString(k8sDir.resolve("ingress.yaml"), renderTemplate("core/kubernetes/ingress.yaml.ftl", model));
+        Files.writeString(k8sDir.resolve("configmap.yaml"), renderTemplate("core/kubernetes/configmap.yaml.ftl", model));
+        Files.writeString(k8sDir.resolve("networkpolicy.yaml"), renderTemplate("core/kubernetes/networkpolicy.yaml.ftl", model));
+    }
+
+    private void generateCiCd(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
+        String ci = config.infrastructure().ci();
+        if ("GITHUB_ACTIONS".equals(ci)) {
+            Path workflowsDir = projectDir.resolve(".github/workflows");
+            Files.createDirectories(workflowsDir);
+            Files.writeString(workflowsDir.resolve("ci.yml"), renderTemplate("core/cicd/github-actions.yml.ftl", model));
+        } else if ("GITLAB_CI".equals(ci)) {
+            Files.writeString(projectDir.resolve(".gitlab-ci.yml"), renderTemplate("core/cicd/gitlab-ci.yml.ftl", model));
+        }
+    }
+
     private void generateModuleStructure(Path projectDir, ProjectConfiguration config, Map<String, Object> model) throws Exception {
         String packageName = (String) model.get("packageName");
         String archType = config.architecture().type();
@@ -196,6 +241,12 @@ public class GenerateStep implements PipelineStep {
                 generateHexagonalModule(srcDir, module, moduleModel);
             } else if ("DDD".equalsIgnoreCase(archType)) {
                 generateDddModule(srcDir, module, moduleModel);
+            } else if ("CQRS".equalsIgnoreCase(archType)) {
+                generateCqrsModule(srcDir, module, moduleModel);
+            } else if ("EVENT_DRIVEN".equalsIgnoreCase(archType)) {
+                generateEventDrivenModule(srcDir, module, moduleModel);
+            } else if ("MODULITH".equalsIgnoreCase(archType)) {
+                generateModulithModule(srcDir, module, moduleModel);
             } else if ("MICROSERVICES".equalsIgnoreCase(archType)) {
                 generateMicroservicesScaffold(projectDir, config, model);
                 return;
@@ -274,6 +325,65 @@ public class GenerateStep implements PipelineStep {
                 renderTemplate("core/layered/Service.java.ftl", model));
         Files.writeString(srcDir.resolve("repository/" + entityName + "Repository.java"),
                 renderTemplate("core/layered/Repository.java.ftl", model));
+    }
+
+    private void generateCqrsModule(Path srcDir, String module, Map<String, Object> model) throws Exception {
+        String entityName = (String) model.get("entityName");
+        Path domainDir = srcDir.resolve(module + "/domain");
+        Path commandDir = srcDir.resolve(module + "/command");
+        Path queryDir = srcDir.resolve(module + "/query");
+        Path apiDir = srcDir.resolve(module + "/api");
+        Files.createDirectories(domainDir);
+        Files.createDirectories(commandDir);
+        Files.createDirectories(queryDir);
+        Files.createDirectories(apiDir);
+
+        Files.writeString(commandDir.resolve(entityName + "Command.java"),
+                renderTemplate("core/cqrs/Command.java.ftl", model));
+        Files.writeString(commandDir.resolve(entityName + "CommandHandler.java"),
+                renderTemplate("core/cqrs/CommandHandler.java.ftl", model));
+        Files.writeString(queryDir.resolve(entityName + "Query.java"),
+                renderTemplate("core/cqrs/Query.java.ftl", model));
+        Files.writeString(queryDir.resolve(entityName + "QueryHandler.java"),
+                renderTemplate("core/cqrs/QueryHandler.java.ftl", model));
+        Files.writeString(queryDir.resolve(entityName + "View.java"),
+                renderTemplate("core/cqrs/View.java.ftl", model));
+        Files.writeString(domainDir.resolve(entityName + "WriteRepository.java"),
+                renderTemplate("core/cqrs/WriteRepository.java.ftl", model));
+        Files.writeString(domainDir.resolve(entityName + "ReadRepository.java"),
+                renderTemplate("core/cqrs/ReadRepository.java.ftl", model));
+    }
+
+    private void generateEventDrivenModule(Path srcDir, String module, Map<String, Object> model) throws Exception {
+        String entityName = (String) model.get("entityName");
+        Path domainDir = srcDir.resolve(module + "/domain");
+        Path eventDir = srcDir.resolve(module + "/event");
+        Path apiDir = srcDir.resolve(module + "/api");
+        Files.createDirectories(domainDir);
+        Files.createDirectories(eventDir);
+        Files.createDirectories(apiDir);
+
+        Files.writeString(eventDir.resolve(entityName + "Event.java"),
+                renderTemplate("core/event-driven/DomainEvent.java.ftl", model));
+        Files.writeString(eventDir.resolve(entityName + "EventPublisher.java"),
+                renderTemplate("core/event-driven/EventPublisher.java.ftl", model));
+        Files.writeString(eventDir.resolve(entityName + "EventListener.java"),
+                renderTemplate("core/event-driven/EventListener.java.ftl", model));
+    }
+
+    private void generateModulithModule(Path srcDir, String module, Map<String, Object> model) throws Exception {
+        String entityName = (String) model.get("entityName");
+        Path apiDir = srcDir.resolve(module + "/api");
+        Path internalDir = srcDir.resolve(module + "/internal");
+        Files.createDirectories(apiDir);
+        Files.createDirectories(internalDir);
+
+        Files.writeString(srcDir.resolve(module + "/package-info.java"),
+                renderTemplate("core/modulith/package-info.java.ftl", model));
+        Files.writeString(apiDir.resolve(entityName + "Api.java"),
+                renderTemplate("core/modulith/ModuleApi.java.ftl", model));
+        Files.writeString(internalDir.resolve(entityName + "Service.java"),
+                renderTemplate("core/modulith/ModuleService.java.ftl", model));
     }
 
     private void generateMicroservicesScaffold(Path projectDir, ProjectConfiguration config, Map<String, Object> model) throws Exception {
