@@ -1,0 +1,40 @@
+services:
+  app:
+    build: .
+    container_name: springforge-app
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DATABASE_URL: jdbc:postgresql://postgres:5432/springforge
+      DATABASE_USERNAME: springforge
+      DATABASE_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      GENERATION_OUTPUT_DIR: /app/generated
+    ports:
+      - "8080:8080"
+    volumes:
+      - generated-data:/app/generated
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: springforge-db
+    environment:
+      POSTGRES_DB: springforge
+      POSTGRES_USER: springforge
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U springforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  generated-data:

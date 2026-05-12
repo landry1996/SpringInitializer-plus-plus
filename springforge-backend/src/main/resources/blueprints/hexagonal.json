@@ -1,0 +1,42 @@
+{
+  "name": "Hexagonal Architecture",
+  "description": "Ports & Adapters with strict dependency rules. Domain is isolated from infrastructure.",
+  "type": "HEXAGONAL",
+  "constraints": [
+    {
+      "rule": "domain must not depend on infrastructure"
+    },
+    {
+      "rule": "api must not depend on infrastructure directly"
+    },
+    {
+      "rule": "application depends on domain only"
+    }
+  ],
+  "defaults": {
+    "dependencies": [
+      "spring-boot-starter-web",
+      "spring-boot-starter-data-jpa",
+      "mapstruct"
+    ],
+    "plugins": [
+      "mapstruct-processor"
+    ]
+  },
+  "structure": {
+    "modules": [
+      {
+        "pattern": "{module}/domain/"
+      },
+      {
+        "pattern": "{module}/application/"
+      },
+      {
+        "pattern": "{module}/infrastructure/"
+      },
+      {
+        "pattern": "{module}/api/"
+      }
+    ]
+  }
+}

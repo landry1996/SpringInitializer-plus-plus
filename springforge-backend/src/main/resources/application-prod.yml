@@ -3,6 +3,10 @@ spring:
     url: ${DATABASE_URL}
     username: ${DATABASE_USERNAME}
     password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 20000
   jpa:
     show-sql: false
 
@@ -15,8 +19,24 @@ app:
     refresh-token-ttl: 604800000
   cors:
     allowed-origins: ${CORS_ORIGINS}
+  generation:
+    output-dir: ${GENERATION_OUTPUT_DIR:/app/generated}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  swagger-ui:
+    enabled: false
 
 logging:
   level:
     com.springforge: WARN
+    AUDIT: INFO
     root: WARN

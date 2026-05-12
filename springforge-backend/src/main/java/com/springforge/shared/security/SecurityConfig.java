@@ -21,11 +21,14 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitingFilter rateLimitingFilter;
     private final CorsConfigurationSource corsConfigurationSource;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                         RateLimitingFilter rateLimitingFilter,
                          CorsConfigurationSource corsConfigurationSource) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.rateLimitingFilter = rateLimitingFilter;
         this.corsConfigurationSource = corsConfigurationSource;
     }
 
@@ -41,8 +44,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/versions/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/dependencies/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .headers(headers -> headers
                         .contentTypeOptions(opt -> {})

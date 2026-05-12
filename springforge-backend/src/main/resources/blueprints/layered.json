@@ -1,0 +1,42 @@
+{
+  "name": "Layered Architecture",
+  "description": "Traditional layered architecture with controller, service, and repository layers.",
+  "type": "LAYERED",
+  "constraints": [
+    {
+      "rule": "controllers must not access repositories directly"
+    },
+    {
+      "rule": "services contain business logic"
+    },
+    {
+      "rule": "repositories handle data access only"
+    }
+  ],
+  "defaults": {
+    "dependencies": [
+      "spring-boot-starter-web",
+      "spring-boot-starter-data-jpa"
+    ],
+    "plugins": []
+  },
+  "structure": {
+    "modules": [
+      {
+        "pattern": "controller/"
+      },
+      {
+        "pattern": "service/"
+      },
+      {
+        "pattern": "repository/"
+      },
+      {
+        "pattern": "model/"
+      },
+      {
+        "pattern": "dto/"
+      }
+    ]
+  }
+}

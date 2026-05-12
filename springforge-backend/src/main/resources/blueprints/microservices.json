@@ -1,0 +1,43 @@
+{
+  "name": "Microservices",
+  "description": "Multi-service scaffold with API gateway pattern and inter-service communication.",
+  "type": "MICROSERVICES",
+  "constraints": [
+    {
+      "rule": "each service owns its database"
+    },
+    {
+      "rule": "inter-service communication via events or REST"
+    },
+    {
+      "rule": "no shared database between services"
+    }
+  ],
+  "defaults": {
+    "dependencies": [
+      "spring-boot-starter-web",
+      "spring-boot-starter-data-jpa",
+      "spring-cloud-starter-netflix-eureka-client"
+    ],
+    "plugins": []
+  },
+  "structure": {
+    "modules": [
+      {
+        "pattern": "{service}/src/main/java/{package}/"
+      },
+      {
+        "pattern": "{service}/src/main/resources/"
+      },
+      {
+        "pattern": "{service}/Dockerfile"
+      },
+      {
+        "pattern": "api-gateway/"
+      },
+      {
+        "pattern": "service-registry/"
+      }
+    ]
+  }
+}

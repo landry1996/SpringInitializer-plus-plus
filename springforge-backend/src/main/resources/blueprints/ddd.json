@@ -1,0 +1,52 @@
+{
+  "name": "Domain-Driven Design",
+  "description": "Bounded contexts with aggregates, domain events, and CQRS-ready structure.",
+  "type": "DDD",
+  "constraints": [
+    {
+      "rule": "aggregate roots are the only entry points to domain"
+    },
+    {
+      "rule": "domain events for cross-context communication"
+    },
+    {
+      "rule": "anti-corruption layers between bounded contexts"
+    },
+    {
+      "rule": "domain must not depend on infrastructure"
+    }
+  ],
+  "defaults": {
+    "dependencies": [
+      "spring-boot-starter-web",
+      "spring-boot-starter-data-jpa",
+      "spring-modulith-starter-core"
+    ],
+    "plugins": []
+  },
+  "structure": {
+    "modules": [
+      {
+        "pattern": "{context}/domain/aggregate/"
+      },
+      {
+        "pattern": "{context}/domain/event/"
+      },
+      {
+        "pattern": "{context}/domain/valueobject/"
+      },
+      {
+        "pattern": "{context}/application/command/"
+      },
+      {
+        "pattern": "{context}/application/query/"
+      },
+      {
+        "pattern": "{context}/infrastructure/"
+      },
+      {
+        "pattern": "{context}/api/"
+      }
+    ]
+  }
+}
