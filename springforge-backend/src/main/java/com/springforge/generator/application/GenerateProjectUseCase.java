@@ -4,7 +4,6 @@ import com.springforge.generator.domain.Generation;
 import com.springforge.generator.domain.GenerationRepository;
 import com.springforge.generator.domain.ProjectConfiguration;
 import com.springforge.generator.domain.pipeline.GenerationContext;
-import com.springforge.generator.domain.pipeline.GenerationPipeline;
 import com.springforge.generator.domain.pipeline.PipelineStep;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -24,13 +23,16 @@ public class GenerateProjectUseCase {
     private final List<PipelineStep> pipelineSteps;
     private final GenerationRepository generationRepository;
     private final ObjectMapper objectMapper;
+    private final GenerationNotifier notifier;
 
     public GenerateProjectUseCase(List<PipelineStep> pipelineSteps,
                                    GenerationRepository generationRepository,
-                                   ObjectMapper objectMapper) {
+                                   ObjectMapper objectMapper,
+                                   GenerationNotifier notifier) {
         this.pipelineSteps = pipelineSteps;
         this.generationRepository = generationRepository;
         this.objectMapper = objectMapper;
+        this.notifier = notifier;
     }
 
     @Transactional
@@ -58,25 +60,42 @@ public class GenerateProjectUseCase {
         generationRepository.save(generation);
 
         try {
-            GenerationPipeline pipeline = new GenerationPipeline(pipelineSteps);
             GenerationContext context = new GenerationContext(config);
-            var result = pipeline.run(context);
+            int totalSteps = pipelineSteps.size();
+            int stepIndex = 0;
+
+            for (PipelineStep step : pipelineSteps) {
+                stepIndex++;
+                int progress = (stepIndex * 100) / totalSteps;
+                notifier.notifyProgress(generationId, step.name(), progress);
+
+                var stepResult = step.execute(context);
+                if (!stepResult.success()) {
+                    String errors = String.join("; ", stepResult.errors());
+                    generation = generationRepository.findById(generationId).orElseThrow();
+                    generation.fail("Pipeline failed at step '" + step.name() + "': " + errors);
+                    generationRepository.save(generation);
+                    notifier.notifyFailed(generationId, errors);
+                    log.error("Generation failed at step {}: {}", step.name(), errors);
+                    return;
+                }
+            }
 
             generation = generationRepository.findById(generationId).orElseThrow();
-            if (result.success()) {
-                generation.complete(result.outputPath().toString());
-                log.info("Generation completed successfully: {}", generationId);
+            if (context.getOutputDirectory() != null) {
+                generation.complete(context.getOutputDirectory().toString());
             } else {
-                String errors = String.join("; ", result.errors());
-                generation.fail("Pipeline failed at step '" + result.failedStep() + "': " + errors);
-                log.error("Generation failed: {}", errors);
+                generation.complete("");
             }
             generationRepository.save(generation);
+            notifier.notifyCompleted(generationId);
+            log.info("Generation completed successfully: {}", generationId);
         } catch (Exception e) {
             log.error("Unexpected error during generation: {}", generationId, e);
             generation = generationRepository.findById(generationId).orElseThrow();
             generation.fail("Unexpected error: " + e.getMessage());
             generationRepository.save(generation);
+            notifier.notifyFailed(generationId, e.getMessage());
         }
     }
 }

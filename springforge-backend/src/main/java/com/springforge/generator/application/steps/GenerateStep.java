@@ -85,6 +85,21 @@ public class GenerateStep implements PipelineStep {
                 generateMultiTenant(projectDir, model, config);
             }
 
+            if (config.security() != null && config.security().type() != null) {
+                generateSecurityConfig(projectDir, model, config);
+            }
+
+            if (config.options() != null && config.options().outputFormat() != null) {
+                // Cache config if specified in dependencies
+                if (config.dependencies() != null && config.dependencies().stream()
+                        .anyMatch(d -> d.contains("cache") || d.contains("redis"))) {
+                    generateCacheConfig(projectDir, model, config);
+                }
+            }
+
+            generateProfileYmls(projectDir, model, config);
+            generateReadme(projectDir, model, config);
+
             context.setOutputDirectory(projectDir);
             return StepResult.ok();
         } catch (Exception e) {
@@ -545,6 +560,80 @@ public class GenerateStep implements PipelineStep {
                 renderTemplate("core/multitenant/TenantAwareEntity.java.ftl", mtModel));
         Files.writeString(mtDir.resolve("TenantHibernateConfig.java"),
                 renderTemplate("core/multitenant/TenantHibernateConfig.java.ftl", mtModel));
+    }
+
+    private void generateSecurityConfig(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
+        String packageName = (String) model.get("packageName");
+        Path secDir = projectDir.resolve("src/main/java/" + packageName.replace(".", "/") + "/config/security");
+        Path resourcesDir = projectDir.resolve("src/main/resources");
+        Files.createDirectories(secDir);
+
+        Map<String, Object> secModel = new HashMap<>(model);
+        secModel.put("securityType", config.security().type());
+        secModel.put("provider", "keycloak");
+
+        Files.writeString(secDir.resolve("SecurityConfig.java"),
+                renderTemplate("core/security/SecurityConfig.java.ftl", secModel));
+        Files.writeString(resourcesDir.resolve("application-security.yml"),
+                renderTemplate("core/security/application-security.yml.ftl", secModel));
+    }
+
+    private void generateCacheConfig(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
+        String packageName = (String) model.get("packageName");
+        Path cacheDir = projectDir.resolve("src/main/java/" + packageName.replace(".", "/") + "/config/cache");
+        Path resourcesDir = projectDir.resolve("src/main/resources");
+        Files.createDirectories(cacheDir);
+
+        Map<String, Object> cacheModel = new HashMap<>(model);
+        String cacheType = config.dependencies().stream()
+                .anyMatch(d -> d.contains("redis")) ? "REDIS" : "CAFFEINE";
+        cacheModel.put("cacheType", cacheType);
+
+        Files.writeString(cacheDir.resolve("CacheConfig.java"),
+                renderTemplate("core/caching/CacheConfig.java.ftl", cacheModel));
+        Files.writeString(resourcesDir.resolve("application-cache.yml"),
+                renderTemplate("core/caching/application-cache.yml.ftl", cacheModel));
+    }
+
+    private void generateProfileYmls(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
+        Path resourcesDir = projectDir.resolve("src/main/resources");
+        Files.createDirectories(resourcesDir);
+
+        Map<String, Object> profileModel = new HashMap<>(model);
+        if (config.messaging() != null && "KAFKA".equalsIgnoreCase(config.messaging().type())) {
+            profileModel.put("messaging", "KAFKA");
+        }
+        if (config.dependencies() != null && config.dependencies().stream().anyMatch(d -> d.contains("redis"))) {
+            profileModel.put("cacheType", "REDIS");
+        }
+
+        Files.writeString(resourcesDir.resolve("application-dev.yml"),
+                renderTemplate("core/common/application-dev.yml.ftl", profileModel));
+        Files.writeString(resourcesDir.resolve("application-test.yml"),
+                renderTemplate("core/common/application-test.yml.ftl", profileModel));
+        Files.writeString(resourcesDir.resolve("application-prod.yml"),
+                renderTemplate("core/common/application-prod.yml.ftl", profileModel));
+    }
+
+    private void generateReadme(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
+        Map<String, Object> readmeModel = new HashMap<>(model);
+        if (config.architecture() != null) {
+            readmeModel.put("architecture", config.architecture().type());
+        }
+        if (config.infrastructure() != null && config.infrastructure().kubernetes()) {
+            readmeModel.put("kubernetes", true);
+        }
+        if (config.messaging() != null) {
+            readmeModel.put("messaging", config.messaging().type());
+        }
+        if (config.dependencies() != null && config.dependencies().stream().anyMatch(d -> d.contains("redis"))) {
+            readmeModel.put("cacheType", "REDIS");
+        }
+        String buildTool = config.metadata().buildTool() != null ? config.metadata().buildTool().name() : "MAVEN";
+        readmeModel.put("buildTool", buildTool);
+
+        Files.writeString(projectDir.resolve("README.md"),
+                renderTemplate("core/common/README.md.ftl", readmeModel));
     }
 
     private String renderTemplate(String templateName, Map<String, Object> model) throws Exception {

@@ -1,5 +1,7 @@
 package com.springforge.generator.api;
 
+import com.springforge.generator.application.DependencyCheckResult;
+import com.springforge.generator.application.DependencyConflictDetector;
 import com.springforge.generator.application.GenerateProjectUseCase;
 import com.springforge.generator.application.GenerateRequest;
 import com.springforge.generator.application.GenerationResponse;
@@ -7,6 +9,7 @@ import com.springforge.generator.application.GenerationStatusResponse;
 import com.springforge.generator.application.ValidationResult;
 import com.springforge.generator.domain.Generation;
 import com.springforge.generator.domain.GenerationRepository;
+import com.springforge.generator.domain.ProjectConfiguration;
 import com.springforge.generator.domain.pipeline.GenerationContext;
 import com.springforge.generator.domain.pipeline.StepResult;
 import com.springforge.generator.application.steps.ValidateStep;
@@ -22,6 +25,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
@@ -33,13 +38,16 @@ public class GeneratorController {
     private final GenerateProjectUseCase generateProjectUseCase;
     private final GenerationRepository generationRepository;
     private final ValidateStep validateStep;
+    private final DependencyConflictDetector conflictDetector;
 
     public GeneratorController(GenerateProjectUseCase generateProjectUseCase,
                                GenerationRepository generationRepository,
-                               ValidateStep validateStep) {
+                               ValidateStep validateStep,
+                               DependencyConflictDetector conflictDetector) {
         this.generateProjectUseCase = generateProjectUseCase;
         this.generationRepository = generationRepository;
         this.validateStep = validateStep;
+        this.conflictDetector = conflictDetector;
     }
 
     @PostMapping("/projects/validate")
@@ -50,6 +58,23 @@ public class GeneratorController {
             return ResponseEntity.ok(ValidationResult.valid());
         }
         return ResponseEntity.badRequest().body(ValidationResult.invalid(result.errors()));
+    }
+
+    @PostMapping("/dependencies/check")
+    public ResponseEntity<DependencyCheckResult> checkDependencies(@RequestBody List<String> dependencies) {
+        List<String> conflicts = conflictDetector.detectConflicts(dependencies);
+        List<String> suggestions = conflictDetector.suggestAdditions(dependencies);
+        if (conflicts.isEmpty()) {
+            return ResponseEntity.ok(DependencyCheckResult.ok(suggestions));
+        }
+        return ResponseEntity.ok(DependencyCheckResult.withConflicts(conflicts, suggestions));
+    }
+
+    @PostMapping("/configurations/export")
+    public ResponseEntity<ProjectConfiguration> exportConfig(@Valid @RequestBody GenerateRequest request) {
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"springforge-config.json\"")
+            .body(request.configuration());
     }
 
     @PostMapping("/projects/generate")

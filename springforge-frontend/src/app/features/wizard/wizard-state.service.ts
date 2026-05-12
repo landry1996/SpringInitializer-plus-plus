@@ -78,4 +78,56 @@ export class WizardStateService {
   reset(): void {
     this._currentStep.set(0);
   }
+
+  importConfiguration(config: any): void {
+    if (!config) return;
+    const newState: Partial<WizardState> = {};
+    if (config.metadata) {
+      newState.metadata = {
+        groupId: config.metadata.groupId || 'com.example',
+        artifactId: config.metadata.artifactId || '',
+        name: config.metadata.name || '',
+        description: config.metadata.description || '',
+        packageName: config.metadata.packageName || ''
+      };
+      newState.versions = {
+        javaVersion: config.metadata.javaVersion || '21',
+        springBootVersion: config.metadata.springBootVersion || '3.3.5'
+      };
+      if (config.metadata.buildTool) {
+        newState.buildTool = config.metadata.buildTool;
+      }
+    }
+    if (config.architecture) {
+      newState.architecture = {
+        type: config.architecture.type || 'HEXAGONAL',
+        modules: config.architecture.modules || [],
+        enableCQRS: config.architecture.enableCQRS || false,
+        enableEventSourcing: config.architecture.enableEventSourcing || false
+      };
+    }
+    if (config.dependencies) {
+      newState.dependencies = config.dependencies;
+    }
+    if (config.security !== undefined) {
+      newState.security = config.security;
+    }
+    if (config.infrastructure) {
+      newState.infrastructure = {
+        docker: config.infrastructure.docker ?? true,
+        dockerCompose: config.infrastructure.dockerCompose ?? true,
+        kubernetes: config.infrastructure.kubernetes ?? false,
+        ci: config.infrastructure.ci || 'GITHUB_ACTIONS'
+      };
+    }
+    if (config.options) {
+      newState.options = {
+        includeExamples: config.options.includeExamples ?? true,
+        formatCode: config.options.formatCode ?? true,
+        runCompileCheck: config.options.runCompileCheck ?? false,
+        outputFormat: config.options.outputFormat || 'ZIP'
+      };
+    }
+    this._state.update(s => ({ ...s, ...newState }));
+  }
 }

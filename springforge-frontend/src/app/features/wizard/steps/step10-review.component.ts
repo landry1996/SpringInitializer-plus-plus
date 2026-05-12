@@ -1,7 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, effect, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WizardStateService } from '../wizard-state.service';
 import { ApiService } from '../../../core/services/api.service';
+import { WebSocketService } from '../../../core/services/websocket.service';
 
 @Component({
   selector: 'app-step10-review',
@@ -39,11 +40,17 @@ import { ApiService } from '../../../core/services/api.service';
     </div>
 
     @if (generationStatus() === 'idle') {
-      <button class="generate-btn" (click)="generate()">Generate Project</button>
+      <div class="action-buttons">
+        <button class="export-btn" (click)="exportConfig()">Export Config</button>
+        <button class="generate-btn" (click)="generate()">Generate Project</button>
+      </div>
     } @else if (generationStatus() === 'generating') {
       <div class="progress">
-        <div class="spinner"></div>
-        <p>Generating your project...</p>
+        <div class="progress-bar-container">
+          <div class="progress-bar" [style.width.%]="progressPercent()"></div>
+        </div>
+        <p class="progress-step">{{ progressMessage() }}</p>
+        <p class="progress-percent">{{ progressPercent() }}%</p>
       </div>
     } @else if (generationStatus() === 'completed') {
       <div class="success">
@@ -63,31 +70,64 @@ import { ApiService } from '../../../core/services/api.service';
     .review-section { padding: 1rem; background: #f9f9f9; border-radius: 8px; }
     .review-section h3 { margin: 0 0 0.5rem; font-size: 0.85rem; text-transform: uppercase; color: #888; }
     .review-section p { margin: 0.25rem 0; font-size: 0.9rem; word-break: break-all; }
-    .generate-btn { width: 100%; padding: 1rem; background: #4caf50; color: white; border: none; border-radius: 8px; font-size: 1.1rem; cursor: pointer; }
+    .action-buttons { display: flex; gap: 1rem; }
+    .generate-btn { flex: 2; padding: 1rem; background: #4caf50; color: white; border: none; border-radius: 8px; font-size: 1.1rem; cursor: pointer; }
     .generate-btn:hover { background: #43a047; }
+    .export-btn { flex: 1; padding: 1rem; background: #ff9800; color: white; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; }
+    .export-btn:hover { background: #f57c00; }
     .download-btn { width: 100%; padding: 1rem; background: #1976d2; color: white; border: none; border-radius: 8px; font-size: 1.1rem; cursor: pointer; margin-top: 1rem; }
     .progress { text-align: center; padding: 2rem; }
-    .spinner { width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top: 4px solid #1976d2; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .progress-bar-container { width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; margin-bottom: 1rem; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, #1976d2, #42a5f5); border-radius: 4px; transition: width 0.3s ease; }
+    .progress-step { font-size: 0.9rem; color: #555; margin: 0.5rem 0; }
+    .progress-percent { font-size: 1.2rem; font-weight: bold; color: #1976d2; }
     .success { text-align: center; padding: 1rem; background: #e8f5e9; border-radius: 8px; }
     .error-msg { text-align: center; padding: 1rem; background: #ffebee; border-radius: 8px; color: #c62828; }
   `]
 })
-export class Step10ReviewComponent {
+export class Step10ReviewComponent implements OnDestroy {
   generationStatus = signal<'idle' | 'generating' | 'completed' | 'failed'>('idle');
   generationId = signal('');
   errorMessage = signal('');
+  progressPercent = signal(0);
+  progressMessage = signal('Starting generation...');
 
-  constructor(public wizardState: WizardStateService, private apiService: ApiService) {}
+  private progressEffect = effect(() => {
+    const progress = this.wsService.progress();
+    if (!progress) return;
+    if (progress.status === 'COMPLETED') {
+      this.progressPercent.set(100);
+      this.progressMessage.set('Done!');
+      this.generationStatus.set('completed');
+      this.wsService.disconnect();
+    } else if (progress.status === 'FAILED') {
+      this.errorMessage.set(progress.message);
+      this.generationStatus.set('failed');
+      this.wsService.disconnect();
+    } else {
+      this.progressPercent.set(progress.progress);
+      this.progressMessage.set(progress.message);
+    }
+  });
+
+  constructor(
+    public wizardState: WizardStateService,
+    private apiService: ApiService,
+    private wsService: WebSocketService
+  ) {}
+
   state() { return this.wizardState.state(); }
 
   generate(): void {
     this.generationStatus.set('generating');
+    this.progressPercent.set(0);
+    this.progressMessage.set('Starting generation...');
     const config = this.wizardState.getConfiguration();
     this.apiService.generateProject(config).subscribe({
       next: (res) => {
         this.generationId.set(res.generationId);
-        this.pollStatus(res.generationId);
+        this.wsService.connect(res.generationId);
+        this.pollStatusFallback(res.generationId);
       },
       error: (err) => {
         this.errorMessage.set(err.error?.message || 'Unknown error');
@@ -96,22 +136,28 @@ export class Step10ReviewComponent {
     });
   }
 
-  private pollStatus(id: string): void {
+  private pollStatusFallback(id: string): void {
     const interval = setInterval(() => {
+      if (this.generationStatus() === 'completed' || this.generationStatus() === 'failed') {
+        clearInterval(interval);
+        return;
+      }
       this.apiService.getGenerationStatus(id).subscribe({
         next: (status) => {
           if (status.status === 'COMPLETED') {
             clearInterval(interval);
             this.generationStatus.set('completed');
+            this.wsService.disconnect();
           } else if (status.status === 'FAILED') {
             clearInterval(interval);
             this.errorMessage.set(status.errorMessage || 'Generation failed');
             this.generationStatus.set('failed');
+            this.wsService.disconnect();
           }
         },
         error: () => { clearInterval(interval); this.generationStatus.set('failed'); }
       });
-    }, 2000);
+    }, 3000);
   }
 
   download(): void {
@@ -123,5 +169,20 @@ export class Step10ReviewComponent {
       a.click();
       URL.revokeObjectURL(url);
     });
+  }
+
+  exportConfig(): void {
+    const config = this.wizardState.getConfiguration();
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'springforge-config.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  ngOnDestroy(): void {
+    this.wsService.disconnect();
   }
 }

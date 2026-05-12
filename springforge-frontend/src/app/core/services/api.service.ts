@@ -51,4 +51,23 @@ export class ApiService {
   downloadGeneration(id: string): Observable<Blob> {
     return this.http.get(this.apiUrl + '/generations/' + id + '/download', { responseType: 'blob' });
   }
+
+  checkDependencies(dependencies: string[]): Observable<DependencyCheckResult> {
+    return this.http.post<DependencyCheckResult>(this.apiUrl + '/dependencies/check', dependencies);
+  }
+
+  validateConfiguration(configuration: any): Observable<ValidationResult> {
+    return this.http.post<ValidationResult>(this.apiUrl + '/projects/validate', { configuration });
+  }
+}
+
+export interface DependencyCheckResult {
+  valid: boolean;
+  conflicts: string[];
+  suggestions: string[];
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
 }
