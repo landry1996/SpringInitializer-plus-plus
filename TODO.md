@@ -93,11 +93,11 @@
 
 ## Phase 4 — Polish & Production
 
-- [ ] **BLOC 10** — Architecture Templates (compléter)
-  - Hexagonal architecture templates (full set: UseCase, JpaAdapter, package-info)
-  - DDD architecture templates (Aggregate, ValueObject, DomainEvent, Command, Query)
-  - Microservices scaffold templates (service-registry, api-gateway)
-  - Template variables documentation
+- [x] **BLOC 10** — Architecture Templates (compléter)
+  - Hexagonal architecture templates (full set: UseCase, UseCaseImpl, JpaAdapter, package-info)
+  - DDD architecture templates (Aggregate, ValueObject, DomainEvent, Repository, Command, Query, CommandHandler, package-info)
+  - Microservices scaffold templates (service-registry, api-gateway, service template, docker-compose)
+  - Template variables documentation (TEMPLATE_VARIABLES.md)
 
 - [x] **BLOC 11** — Security Hardening
   - Rate limiting (RateLimitingFilter: 20 req/min sur /auth endpoints)
@@ -130,7 +130,7 @@
 | 7 | DONE | 2026-05-12 |
 | 8 | DONE | 2026-05-12 |
 | 9 | DONE | 2026-05-12 |
-| 10 | TODO | — |
+| 10 | DONE | 2026-05-12 |
 | 11 | DONE | 2026-05-12 |
 | 12 | DONE | 2026-05-12 |
 
@@ -150,5 +150,11 @@
 - **Bloc 8** : Wizard Steps 1-5 — metadata form, version selector, build tool, architecture/blueprint cards, module definition
 - **Bloc 9** : Wizard Steps 6-10 — dependency picker, security config, infrastructure toggles, options, review + generate button with async polling + ZIP download
 
-### Prochaines étapes :
-1. **Bloc 10** : Architecture Templates (compléter) — Hexagonal full set, DDD templates, Microservices scaffold
+### Bloc 10 complété (2026-05-12) :
+- **Hexagonal** : UseCase, UseCaseImpl, JpaAdapter, package-info (full port & adapter pattern)
+- **DDD** : Aggregate, ValueObject (ID), DomainEvent, Repository, Command, Query, CommandHandler, package-info
+- **Microservices** : Service Registry (Eureka), API Gateway (Spring Cloud Gateway + Resilience4j), service scaffold, docker-compose multi-service
+- **GenerateStep** : Updated to render all architecture templates per module
+- **Documentation** : TEMPLATE_VARIABLES.md with all variables and structure
+
+### Projet complété — Tous les blocs sont DONE

@@ -187,18 +187,145 @@ public class GenerateStep implements PipelineStep {
         Path srcDir = projectDir.resolve("src/main/java/" + packageName.replace(".", "/"));
 
         for (String module : config.architecture().modules()) {
-            if ("HEXAGONAL".equalsIgnoreCase(archType) || "DDD".equalsIgnoreCase(archType)) {
-                Files.createDirectories(srcDir.resolve(module + "/domain"));
-                Files.createDirectories(srcDir.resolve(module + "/application"));
-                Files.createDirectories(srcDir.resolve(module + "/infrastructure"));
-                Files.createDirectories(srcDir.resolve(module + "/api"));
-            } else if ("LAYERED".equalsIgnoreCase(archType) || "MONOLITHIC".equalsIgnoreCase(archType)) {
-                Files.createDirectories(srcDir.resolve("controller"));
-                Files.createDirectories(srcDir.resolve("service"));
-                Files.createDirectories(srcDir.resolve("repository"));
-                Files.createDirectories(srcDir.resolve("model"));
+            String entityName = toPascalCase(module);
+            Map<String, Object> moduleModel = new HashMap<>(model);
+            moduleModel.put("moduleName", module);
+            moduleModel.put("entityName", entityName);
+
+            if ("HEXAGONAL".equalsIgnoreCase(archType)) {
+                generateHexagonalModule(srcDir, module, moduleModel);
+            } else if ("DDD".equalsIgnoreCase(archType)) {
+                generateDddModule(srcDir, module, moduleModel);
+            } else if ("MICROSERVICES".equalsIgnoreCase(archType)) {
+                generateMicroservicesScaffold(projectDir, config, model);
+                return;
+            } else {
+                generateLayeredModule(srcDir, module, moduleModel);
             }
         }
+    }
+
+    private void generateHexagonalModule(Path srcDir, String module, Map<String, Object> model) throws Exception {
+        String entityName = (String) model.get("entityName");
+        Path domainDir = srcDir.resolve(module + "/domain");
+        Path appDir = srcDir.resolve(module + "/application");
+        Path infraDir = srcDir.resolve(module + "/infrastructure");
+        Path apiDir = srcDir.resolve(module + "/api");
+        Files.createDirectories(domainDir);
+        Files.createDirectories(appDir);
+        Files.createDirectories(infraDir);
+        Files.createDirectories(apiDir);
+
+        Files.writeString(domainDir.resolve(entityName + ".java"),
+                renderTemplate("core/hexagonal/DomainEntity.java.ftl", model));
+        Files.writeString(domainDir.resolve(entityName + "Repository.java"),
+                renderTemplate("core/hexagonal/Repository.java.ftl", model));
+        Files.writeString(appDir.resolve(entityName + "UseCase.java"),
+                renderTemplate("core/hexagonal/UseCase.java.ftl", model));
+        Files.writeString(appDir.resolve(entityName + "UseCaseImpl.java"),
+                renderTemplate("core/hexagonal/UseCaseImpl.java.ftl", model));
+        Files.writeString(infraDir.resolve(entityName + "JpaAdapter.java"),
+                renderTemplate("core/hexagonal/JpaAdapter.java.ftl", model));
+        Files.writeString(apiDir.resolve(entityName + "Controller.java"),
+                renderTemplate("core/hexagonal/Controller.java.ftl", model));
+        Files.writeString(srcDir.resolve(module + "/package-info.java"),
+                renderTemplate("core/hexagonal/package-info.java.ftl", model));
+    }
+
+    private void generateDddModule(Path srcDir, String module, Map<String, Object> model) throws Exception {
+        String entityName = (String) model.get("entityName");
+        Path domainDir = srcDir.resolve(module + "/domain");
+        Path appDir = srcDir.resolve(module + "/application");
+        Path infraDir = srcDir.resolve(module + "/infrastructure");
+        Path apiDir = srcDir.resolve(module + "/api");
+        Files.createDirectories(domainDir);
+        Files.createDirectories(appDir);
+        Files.createDirectories(infraDir);
+        Files.createDirectories(apiDir);
+
+        Files.writeString(domainDir.resolve(entityName + ".java"),
+                renderTemplate("core/ddd/Aggregate.java.ftl", model));
+        Files.writeString(domainDir.resolve(entityName + "Id.java"),
+                renderTemplate("core/ddd/ValueObject.java.ftl", model));
+        Files.writeString(domainDir.resolve("DomainEvent.java"),
+                renderTemplate("core/ddd/DomainEvent.java.ftl", model));
+        Files.writeString(domainDir.resolve(entityName + "Repository.java"),
+                renderTemplate("core/ddd/Repository.java.ftl", model));
+        Files.writeString(appDir.resolve(entityName + "Command.java"),
+                renderTemplate("core/ddd/Command.java.ftl", model));
+        Files.writeString(appDir.resolve(entityName + "Query.java"),
+                renderTemplate("core/ddd/Query.java.ftl", model));
+        Files.writeString(appDir.resolve(entityName + "CommandHandler.java"),
+                renderTemplate("core/ddd/CommandHandler.java.ftl", model));
+        Files.writeString(srcDir.resolve(module + "/package-info.java"),
+                renderTemplate("core/ddd/package-info.java.ftl", model));
+    }
+
+    private void generateLayeredModule(Path srcDir, String module, Map<String, Object> model) throws Exception {
+        String entityName = (String) model.get("entityName");
+        Files.createDirectories(srcDir.resolve("controller"));
+        Files.createDirectories(srcDir.resolve("service"));
+        Files.createDirectories(srcDir.resolve("repository"));
+        Files.createDirectories(srcDir.resolve("model"));
+
+        Files.writeString(srcDir.resolve("controller/" + entityName + "Controller.java"),
+                renderTemplate("core/layered/Controller.java.ftl", model));
+        Files.writeString(srcDir.resolve("service/" + entityName + "Service.java"),
+                renderTemplate("core/layered/Service.java.ftl", model));
+        Files.writeString(srcDir.resolve("repository/" + entityName + "Repository.java"),
+                renderTemplate("core/layered/Repository.java.ftl", model));
+    }
+
+    private void generateMicroservicesScaffold(Path projectDir, ProjectConfiguration config, Map<String, Object> model) throws Exception {
+        String packageName = (String) model.get("packageName");
+        List<Map<String, String>> services = new ArrayList<>();
+        for (String module : config.architecture().modules()) {
+            services.add(Map.of("name", module));
+        }
+        Map<String, Object> msModel = new HashMap<>(model);
+        msModel.put("services", services);
+
+        Path registryDir = projectDir.resolve("service-registry");
+        Files.createDirectories(registryDir);
+        Path registryPkg = registryDir.resolve("src/main/java/" + packageName.replace(".", "/") + "/registry");
+        Path registryRes = registryDir.resolve("src/main/resources");
+        Files.createDirectories(registryPkg);
+        Files.createDirectories(registryRes);
+        Files.writeString(registryDir.resolve("pom.xml"),
+                renderTemplate("core/microservices/service-registry-pom.xml.ftl", msModel));
+        Files.writeString(registryPkg.resolve("ServiceRegistryApplication.java"),
+                renderTemplate("core/microservices/ServiceRegistryApplication.java.ftl", msModel));
+        Files.writeString(registryRes.resolve("application.yml"),
+                renderTemplate("core/microservices/service-registry-application.yml.ftl", msModel));
+
+        Path gatewayDir = projectDir.resolve("api-gateway");
+        Files.createDirectories(gatewayDir);
+        Path gatewayPkg = gatewayDir.resolve("src/main/java/" + packageName.replace(".", "/") + "/gateway");
+        Path gatewayRes = gatewayDir.resolve("src/main/resources");
+        Files.createDirectories(gatewayPkg);
+        Files.createDirectories(gatewayRes);
+        Files.writeString(gatewayDir.resolve("pom.xml"),
+                renderTemplate("core/microservices/api-gateway-pom.xml.ftl", msModel));
+        Files.writeString(gatewayPkg.resolve("ApiGatewayApplication.java"),
+                renderTemplate("core/microservices/ApiGatewayApplication.java.ftl", msModel));
+        Files.writeString(gatewayRes.resolve("application.yml"),
+                renderTemplate("core/microservices/api-gateway-application.yml.ftl", msModel));
+
+        for (String module : config.architecture().modules()) {
+            Map<String, Object> svcModel = new HashMap<>(msModel);
+            svcModel.put("serviceName", module);
+            Path svcDir = projectDir.resolve(module);
+            Files.createDirectories(svcDir);
+            Path svcRes = svcDir.resolve("src/main/resources");
+            Files.createDirectories(svcRes);
+            Files.writeString(svcDir.resolve("pom.xml"),
+                    renderTemplate("core/microservices/service-pom.xml.ftl", svcModel));
+            Files.writeString(svcRes.resolve("application.yml"),
+                    renderTemplate("core/microservices/service-application.yml.ftl", svcModel));
+        }
+
+        Files.writeString(projectDir.resolve("docker-compose.yml"),
+                renderTemplate("core/microservices/docker-compose.yml.ftl", msModel));
     }
 
     private String renderTemplate(String templateName, Map<String, Object> model) throws Exception {
