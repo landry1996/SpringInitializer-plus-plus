@@ -69,6 +69,22 @@ public class GenerateStep implements PipelineStep {
                 generateModuleStructure(projectDir, config, model);
             }
 
+            if (config.messaging() != null && "KAFKA".equalsIgnoreCase(config.messaging().type())) {
+                generateKafkaConfig(projectDir, model, config);
+            }
+
+            if (config.observability() != null && config.observability().enabled()) {
+                generateObservability(projectDir, model);
+            }
+
+            if (config.testing() != null && config.testing().enabled()) {
+                generateTestingConfig(projectDir, model, config);
+            }
+
+            if (config.multiTenant() != null && config.multiTenant().enabled()) {
+                generateMultiTenant(projectDir, model, config);
+            }
+
             context.setOutputDirectory(projectDir);
             return StepResult.ok();
         } catch (Exception e) {
@@ -436,6 +452,99 @@ public class GenerateStep implements PipelineStep {
 
         Files.writeString(projectDir.resolve("docker-compose.yml"),
                 renderTemplate("core/microservices/docker-compose.yml.ftl", msModel));
+    }
+
+    private void generateKafkaConfig(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
+        String packageName = (String) model.get("packageName");
+        Path kafkaDir = projectDir.resolve("src/main/java/" + packageName.replace(".", "/") + "/config/kafka");
+        Path resourcesDir = projectDir.resolve("src/main/resources");
+        Files.createDirectories(kafkaDir);
+
+        Map<String, Object> kafkaModel = new HashMap<>(model);
+        if (config.messaging().topics() != null) {
+            kafkaModel.put("topics", config.messaging().topics());
+        } else {
+            kafkaModel.put("topics", List.of(Map.of("name", model.get("artifactId") + ".events", "partitions", "3", "replicas", "1")));
+        }
+
+        Files.writeString(kafkaDir.resolve("KafkaProducerConfig.java"),
+                renderTemplate("core/kafka/KafkaProducerConfig.java.ftl", kafkaModel));
+        Files.writeString(kafkaDir.resolve("KafkaConsumerConfig.java"),
+                renderTemplate("core/kafka/KafkaConsumerConfig.java.ftl", kafkaModel));
+        Files.writeString(kafkaDir.resolve("DomainEventPublisher.java"),
+                renderTemplate("core/kafka/DomainEventPublisher.java.ftl", kafkaModel));
+        Files.writeString(kafkaDir.resolve("KafkaTopicConfig.java"),
+                renderTemplate("core/kafka/KafkaTopicConfig.java.ftl", kafkaModel));
+        Files.writeString(resourcesDir.resolve("application-kafka.yml"),
+                renderTemplate("core/kafka/application-kafka.yml.ftl", kafkaModel));
+    }
+
+    private void generateObservability(Path projectDir, Map<String, Object> model) throws Exception {
+        String packageName = (String) model.get("packageName");
+        Path obsDir = projectDir.resolve("src/main/java/" + packageName.replace(".", "/") + "/config/observability");
+        Path resourcesDir = projectDir.resolve("src/main/resources");
+        Files.createDirectories(obsDir);
+
+        Files.writeString(obsDir.resolve("MetricsConfig.java"),
+                renderTemplate("core/observability/MetricsConfig.java.ftl", model));
+        Files.writeString(obsDir.resolve("TracingConfig.java"),
+                renderTemplate("core/observability/TracingConfig.java.ftl", model));
+        Files.writeString(obsDir.resolve("ApplicationHealthIndicator.java"),
+                renderTemplate("core/observability/HealthIndicatorConfig.java.ftl", model));
+        Files.writeString(resourcesDir.resolve("logback-spring.xml"),
+                renderTemplate("core/observability/logback-spring.xml.ftl", model));
+        Files.writeString(resourcesDir.resolve("application-observability.yml"),
+                renderTemplate("core/observability/application-observability.yml.ftl", model));
+    }
+
+    private void generateTestingConfig(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
+        String packageName = (String) model.get("packageName");
+        Path testDir = projectDir.resolve("src/test/java/" + packageName.replace(".", "/"));
+        Files.createDirectories(testDir);
+
+        Map<String, Object> testModel = new HashMap<>(model);
+        testModel.put("mainClassName", model.get("applicationClassName"));
+        testModel.put("testcontainers", config.testing().testcontainers());
+        if (config.architecture() != null) {
+            testModel.put("architecture", config.architecture().type());
+        }
+        if (config.messaging() != null && "KAFKA".equalsIgnoreCase(config.messaging().type())) {
+            testModel.put("kafka", true);
+        }
+
+        Files.writeString(testDir.resolve(model.get("applicationClassName") + "Test.java"),
+                renderTemplate("core/testing/ApplicationTest.java.ftl", testModel));
+        Files.writeString(testDir.resolve("ArchitectureTest.java"),
+                renderTemplate("core/testing/ArchitectureTest.java.ftl", testModel));
+
+        if (config.testing().testcontainers()) {
+            Path configDir = testDir.resolve("config");
+            Files.createDirectories(configDir);
+            Files.writeString(configDir.resolve("TestcontainersConfig.java"),
+                    renderTemplate("core/testing/TestcontainersConfig.java.ftl", testModel));
+            Files.writeString(testDir.resolve("IntegrationTest.java"),
+                    renderTemplate("core/testing/IntegrationTest.java.ftl", testModel));
+        }
+    }
+
+    private void generateMultiTenant(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
+        String packageName = (String) model.get("packageName");
+        Path mtDir = projectDir.resolve("src/main/java/" + packageName.replace(".", "/") + "/config/multitenant");
+        Files.createDirectories(mtDir);
+
+        Map<String, Object> mtModel = new HashMap<>(model);
+        mtModel.put("multiTenantStrategy", config.multiTenant().strategy());
+
+        Files.writeString(mtDir.resolve("TenantContext.java"),
+                renderTemplate("core/multitenant/TenantContext.java.ftl", mtModel));
+        Files.writeString(mtDir.resolve("TenantFilter.java"),
+                renderTemplate("core/multitenant/TenantFilter.java.ftl", mtModel));
+        Files.writeString(mtDir.resolve("TenantResolver.java"),
+                renderTemplate("core/multitenant/TenantResolver.java.ftl", mtModel));
+        Files.writeString(mtDir.resolve("TenantAwareEntity.java"),
+                renderTemplate("core/multitenant/TenantAwareEntity.java.ftl", mtModel));
+        Files.writeString(mtDir.resolve("TenantHibernateConfig.java"),
+                renderTemplate("core/multitenant/TenantHibernateConfig.java.ftl", mtModel));
     }
 
     private String renderTemplate(String templateName, Map<String, Object> model) throws Exception {

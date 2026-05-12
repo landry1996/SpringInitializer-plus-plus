@@ -4,8 +4,12 @@ import com.springforge.generator.application.GenerateProjectUseCase;
 import com.springforge.generator.application.GenerateRequest;
 import com.springforge.generator.application.GenerationResponse;
 import com.springforge.generator.application.GenerationStatusResponse;
+import com.springforge.generator.application.ValidationResult;
 import com.springforge.generator.domain.Generation;
 import com.springforge.generator.domain.GenerationRepository;
+import com.springforge.generator.domain.pipeline.GenerationContext;
+import com.springforge.generator.domain.pipeline.StepResult;
+import com.springforge.generator.application.steps.ValidateStep;
 import com.springforge.shared.exception.ResourceNotFoundException;
 import com.springforge.shared.security.AuthenticatedUser;
 import jakarta.validation.Valid;
@@ -28,11 +32,24 @@ public class GeneratorController {
 
     private final GenerateProjectUseCase generateProjectUseCase;
     private final GenerationRepository generationRepository;
+    private final ValidateStep validateStep;
 
     public GeneratorController(GenerateProjectUseCase generateProjectUseCase,
-                               GenerationRepository generationRepository) {
+                               GenerationRepository generationRepository,
+                               ValidateStep validateStep) {
         this.generateProjectUseCase = generateProjectUseCase;
         this.generationRepository = generationRepository;
+        this.validateStep = validateStep;
+    }
+
+    @PostMapping("/projects/validate")
+    public ResponseEntity<ValidationResult> validate(@Valid @RequestBody GenerateRequest request) {
+        GenerationContext context = new GenerationContext(request.configuration());
+        StepResult result = validateStep.execute(context);
+        if (result.success()) {
+            return ResponseEntity.ok(ValidationResult.valid());
+        }
+        return ResponseEntity.badRequest().body(ValidationResult.invalid(result.errors()));
     }
 
     @PostMapping("/projects/generate")

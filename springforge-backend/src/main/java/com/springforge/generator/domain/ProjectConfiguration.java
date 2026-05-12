@@ -9,6 +9,10 @@ public record ProjectConfiguration(
         List<String> dependencies,
         SecurityConfig security,
         InfrastructureConfig infrastructure,
+        MessagingConfig messaging,
+        ObservabilityConfig observability,
+        TestingConfig testing,
+        MultiTenantConfig multiTenant,
         GenerationOptions options
 ) {
     public record Metadata(
@@ -39,6 +43,29 @@ public record ProjectConfiguration(
             boolean dockerCompose,
             boolean kubernetes,
             String ci
+    ) {}
+
+    public record MessagingConfig(
+            String type,
+            List<Map<String, String>> topics
+    ) {}
+
+    public record ObservabilityConfig(
+            boolean enabled,
+            boolean metrics,
+            boolean tracing,
+            boolean structuredLogging
+    ) {}
+
+    public record TestingConfig(
+            boolean enabled,
+            boolean testcontainers,
+            boolean archunit
+    ) {}
+
+    public record MultiTenantConfig(
+            boolean enabled,
+            String strategy
     ) {}
 
     public record GenerationOptions(
