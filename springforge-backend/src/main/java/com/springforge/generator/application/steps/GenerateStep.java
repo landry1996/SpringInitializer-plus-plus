@@ -99,6 +99,13 @@ public class GenerateStep implements PipelineStep {
 
             generateProfileYmls(projectDir, model, config);
             generateReadme(projectDir, model, config);
+            generateQualityFiles(projectDir, model, config);
+            generateDocs(projectDir, model, config);
+            generateWrapper(projectDir, model, config);
+
+            if (config.infrastructure() != null && (config.infrastructure().helm() || config.infrastructure().kubernetes())) {
+                generateHelmChart(projectDir, model, config);
+            }
 
             context.setOutputDirectory(projectDir);
             return StepResult.ok();
@@ -310,6 +317,14 @@ public class GenerateStep implements PipelineStep {
                 renderTemplate("core/hexagonal/JpaAdapter.java.ftl", model));
         Files.writeString(apiDir.resolve(entityName + "Controller.java"),
                 renderTemplate("core/hexagonal/Controller.java.ftl", model));
+        Files.writeString(appDir.resolve(entityName + "Mapper.java"),
+                renderTemplate("core/hexagonal/Mapper.java.ftl", model));
+        Files.writeString(appDir.resolve("Create" + entityName + "Request.java"),
+                renderTemplate("core/hexagonal/CreateRequest.java.ftl", model));
+        Files.writeString(appDir.resolve("Update" + entityName + "Request.java"),
+                renderTemplate("core/hexagonal/UpdateRequest.java.ftl", model));
+        Files.writeString(appDir.resolve(entityName + "Response.java"),
+                renderTemplate("core/hexagonal/Response.java.ftl", model));
         Files.writeString(srcDir.resolve(module + "/package-info.java"),
                 renderTemplate("core/hexagonal/package-info.java.ftl", model));
     }
@@ -492,6 +507,24 @@ public class GenerateStep implements PipelineStep {
                 renderTemplate("core/kafka/KafkaTopicConfig.java.ftl", kafkaModel));
         Files.writeString(resourcesDir.resolve("application-kafka.yml"),
                 renderTemplate("core/kafka/application-kafka.yml.ftl", kafkaModel));
+
+        if (config.messaging().topics() != null &&
+            config.messaging().topics().stream().anyMatch(t -> "AVRO".equalsIgnoreCase(t.get("serialization")))) {
+            Files.writeString(kafkaDir.resolve("KafkaAvroConfig.java"),
+                    renderTemplate("core/kafka/KafkaAvroConfig.java.ftl", kafkaModel));
+        }
+
+        Files.writeString(kafkaDir.resolve("OutboxEvent.java"),
+                renderTemplate("core/kafka/OutboxEvent.java.ftl", kafkaModel));
+        Files.writeString(kafkaDir.resolve("OutboxEventRepository.java"),
+                renderTemplate("core/kafka/OutboxEventRepository.java.ftl", kafkaModel));
+        Files.writeString(kafkaDir.resolve("OutboxEventProcessor.java"),
+                renderTemplate("core/kafka/OutboxEventProcessor.java.ftl", kafkaModel));
+
+        Path migrationsDir = resourcesDir.resolve("db/migration");
+        Files.createDirectories(migrationsDir);
+        Files.writeString(migrationsDir.resolve("V100__create_outbox_events.sql"),
+                renderTemplate("core/kafka/outbox-migration.sql.ftl", kafkaModel));
     }
 
     private void generateObservability(Path projectDir, Map<String, Object> model) throws Exception {
@@ -634,6 +667,78 @@ public class GenerateStep implements PipelineStep {
 
         Files.writeString(projectDir.resolve("README.md"),
                 renderTemplate("core/common/README.md.ftl", readmeModel));
+    }
+
+    private void generateQualityFiles(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
+        Map<String, Object> qualityModel = new HashMap<>(model);
+        String buildTool = config.metadata().buildTool() != null ? config.metadata().buildTool().name() : "MAVEN";
+        qualityModel.put("buildTool", buildTool);
+
+        Files.writeString(projectDir.resolve(".editorconfig"),
+                renderTemplate("core/quality/editorconfig.ftl", qualityModel));
+        Files.writeString(projectDir.resolve("checkstyle.xml"),
+                renderTemplate("core/quality/checkstyle.xml.ftl", qualityModel));
+        Files.writeString(projectDir.resolve("spotbugs-exclude.xml"),
+                renderTemplate("core/quality/spotbugs-exclude.xml.ftl", qualityModel));
+        Files.writeString(projectDir.resolve(".pre-commit-config.yaml"),
+                renderTemplate("core/quality/pre-commit-config.yaml.ftl", qualityModel));
+    }
+
+    private void generateDocs(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
+        Map<String, Object> docsModel = new HashMap<>(model);
+        String buildTool = config.metadata().buildTool() != null ? config.metadata().buildTool().name() : "MAVEN";
+        docsModel.put("buildTool", buildTool);
+        if (config.architecture() != null) {
+            docsModel.put("architecture", config.architecture().type());
+        }
+
+        Files.writeString(projectDir.resolve("CONTRIBUTING.md"),
+                renderTemplate("core/docs/CONTRIBUTING.md.ftl", docsModel));
+
+        Path adrDir = projectDir.resolve("docs/adr");
+        Files.createDirectories(adrDir);
+        Files.writeString(adrDir.resolve("000-template.md"),
+                renderTemplate("core/docs/adr-template.md.ftl", docsModel));
+        Files.writeString(adrDir.resolve("001-architecture-choice.md"),
+                renderTemplate("core/docs/adr-001-architecture.md.ftl", docsModel));
+    }
+
+    private void generateWrapper(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
+        String buildTool = config.metadata().buildTool() != null ? config.metadata().buildTool().name() : "MAVEN";
+        if (buildTool.contains("GRADLE")) {
+            String content = renderTemplate("core/common/gradlew.ftl", model);
+            Path gradlew = projectDir.resolve("gradlew");
+            Files.writeString(gradlew, content);
+        } else {
+            String content = renderTemplate("core/common/mvnw.ftl", model);
+            Path mvnw = projectDir.resolve("mvnw");
+            Files.writeString(mvnw, content);
+        }
+    }
+
+    private void generateHelmChart(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
+        Path helmDir = projectDir.resolve("helm/" + model.get("artifactId"));
+        Path templatesDir = helmDir.resolve("templates");
+        Files.createDirectories(templatesDir);
+
+        Map<String, Object> helmModel = new HashMap<>(model);
+        if (config.architecture() != null) {
+            helmModel.put("architecture", config.architecture().type());
+        }
+        if (config.messaging() != null && "KAFKA".equalsIgnoreCase(config.messaging().type())) {
+            helmModel.put("messaging", "KAFKA");
+        }
+
+        Files.writeString(helmDir.resolve("Chart.yaml"),
+                renderTemplate("core/helm/Chart.yaml.ftl", helmModel));
+        Files.writeString(helmDir.resolve("values.yaml"),
+                renderTemplate("core/helm/values.yaml.ftl", helmModel));
+        Files.writeString(helmDir.resolve("values-dev.yaml"),
+                renderTemplate("core/helm/values-dev.yaml.ftl", helmModel));
+        Files.writeString(templatesDir.resolve("deployment.yaml"),
+                renderTemplate("core/helm/deployment.yaml.ftl", helmModel));
+        Files.writeString(templatesDir.resolve("_helpers.tpl"),
+                renderTemplate("core/helm/_helpers.tpl.ftl", helmModel));
     }
 
     private String renderTemplate(String templateName, Map<String, Object> model) throws Exception {

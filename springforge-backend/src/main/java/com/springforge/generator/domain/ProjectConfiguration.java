@@ -42,6 +42,7 @@ public record ProjectConfiguration(
             boolean docker,
             boolean dockerCompose,
             boolean kubernetes,
+            boolean helm,
             String ci
     ) {}
 
@@ -60,7 +61,8 @@ public record ProjectConfiguration(
     public record TestingConfig(
             boolean enabled,
             boolean testcontainers,
-            boolean archunit
+            boolean archunit,
+            boolean contractTesting
     ) {}
 
     public record MultiTenantConfig(
