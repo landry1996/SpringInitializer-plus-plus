@@ -4,16 +4,16 @@
 
 | # | Item | Statut | Description |
 |---|------|--------|-------------|
-| 1 | Tests unitaires & intégration | ⬜ TODO | JUnit 5 + Mockito pour tous les services P4 (recommendation, marketplace, admin, tenant, i18n) |
-| 2 | Tests E2E frontend | ⬜ TODO | Cypress/Playwright pour les flux wizard, marketplace, admin |
-| 3 | Documentation API | ⬜ TODO | OpenAPI/Swagger complet avec exemples pour tous les endpoints |
-| 4 | CI/CD Pipeline | ⬜ TODO | GitHub Actions : build, test, lint, Docker build, deploy staging/prod |
-| 5 | Docker Compose | ⬜ TODO | Stack complète locale (backend + frontend + PostgreSQL + Kafka + Keycloak + Redis) |
-| 6 | Kubernetes manifests | ⬜ TODO | Déploiement de la plateforme elle-même (Deployment, Service, Ingress, ConfigMap, Secrets) |
-| 7 | Monitoring & Alerting | ⬜ TODO | Prometheus + Grafana dashboards pour la plateforme SpringForge |
-| 8 | Security hardening | ⬜ TODO | Rate limiting, CORS, CSP headers, input sanitization, OWASP compliance |
-| 9 | Performance | ⬜ TODO | Cache Redis sur blueprints/recommandations, pagination optimisée, lazy loading frontend |
-| 10 | Documentation utilisateur | ⬜ TODO | Guide utilisateur, tutoriels, changelog, contributing guide |
+| 1 | Tests unitaires & intégration | ✅ DONE | JUnit 5 + Mockito pour tous les services P4 (recommendation, marketplace, admin, tenant, i18n) |
+| 2 | Tests E2E frontend | ✅ DONE | Playwright pour les flux wizard, marketplace, admin, i18n, organization |
+| 3 | Documentation API | ✅ DONE | OpenAPI/Swagger complet + Postman collection |
+| 4 | CI/CD Pipeline | ✅ DONE | GitHub Actions : ci.yml, release.yml, deploy-prod.yml |
+| 5 | Docker Compose | ✅ DONE | Stack complète 9 services + Dockerfile frontend + nginx.conf + Prometheus |
+| 6 | Kubernetes manifests | ✅ DONE | Namespace, Deployments, Services, Ingress, HPA, ConfigMap, Secrets, PVC |
+| 7 | Monitoring & Alerting | ✅ DONE | ServiceMonitor, alerting rules, Grafana dashboard, AlertManager config |
+| 8 | Security hardening | ✅ DONE | Rate limiting 60req/min, CORS, CSP, HSTS, input sanitization, security headers |
+| 9 | Performance | ✅ DONE | Redis cache multi-TTL, HikariCP optimisé, async thread pools, compression HTTP |
+| 10 | Documentation utilisateur | ✅ DONE | README complet, CONTRIBUTING.md, CHANGELOG.md |
 
 ## Détails techniques
 
