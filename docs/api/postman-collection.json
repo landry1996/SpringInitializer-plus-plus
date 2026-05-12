@@ -1,0 +1,123 @@
+{
+  "info": {
+    "name": "SpringForge API",
+    "description": "Complete API collection for SpringForge project generator",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{jwt_token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" },
+    { "key": "jwt_token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "Validate Configuration",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/projects/validate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"metadata\": {\n    \"groupId\": \"com.example\",\n    \"artifactId\": \"demo\",\n    \"name\": \"demo\",\n    \"javaVersion\": \"21\",\n    \"springBootVersion\": \"3.3.5\",\n    \"buildTool\": \"MAVEN\"\n  },\n  \"architecture\": { \"type\": \"HEXAGONAL\" }\n}"
+            }
+          }
+        },
+        {
+          "name": "Generate Project",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/projects/generate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"metadata\": {\n    \"groupId\": \"com.example\",\n    \"artifactId\": \"demo\",\n    \"name\": \"demo\",\n    \"javaVersion\": \"21\",\n    \"springBootVersion\": \"3.3.5\",\n    \"buildTool\": \"MAVEN\"\n  },\n  \"architecture\": { \"type\": \"HEXAGONAL\", \"modules\": [\"user\", \"order\"] }\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Generation Status",
+          "request": { "method": "GET", "url": "{{base_url}}/api/v1/projects/{{generation_id}}/status" }
+        },
+        {
+          "name": "Download Project",
+          "request": { "method": "GET", "url": "{{base_url}}/api/v1/projects/{{generation_id}}/download" }
+        }
+      ]
+    },
+    {
+      "name": "Recommendations",
+      "item": [
+        {
+          "name": "Get Recommendations",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/recommendations",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"metadata\": { \"groupId\": \"com.example\", \"artifactId\": \"demo\", \"javaVersion\": \"21\", \"springBootVersion\": \"3.3.5\", \"buildTool\": \"MAVEN\" },\n  \"architecture\": { \"type\": \"MICROSERVICES\" },\n  \"dependencies\": [{ \"groupId\": \"org.springframework.boot\", \"artifactId\": \"spring-boot-starter-web\" }]\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Compatibility Score",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/recommendations/score",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"metadata\": { \"groupId\": \"com.example\", \"artifactId\": \"demo\", \"javaVersion\": \"21\", \"springBootVersion\": \"3.3.5\", \"buildTool\": \"MAVEN\" },\n  \"architecture\": { \"type\": \"HEXAGONAL\" }\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Marketplace",
+      "item": [
+        { "name": "List Blueprints", "request": { "method": "GET", "url": "{{base_url}}/api/v1/marketplace/blueprints?page=0&size=20&sortBy=downloads" } },
+        { "name": "Get Blueprint", "request": { "method": "GET", "url": "{{base_url}}/api/v1/marketplace/blueprints/{{blueprint_id}}" } },
+        { "name": "Create Blueprint", "request": { "method": "POST", "url": "{{base_url}}/api/v1/marketplace/blueprints", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Microservice Starter\",\n  \"description\": \"A complete microservice blueprint\",\n  \"author\": \"admin\",\n  \"version\": \"1.0.0\",\n  \"category\": \"MICROSERVICE\",\n  \"tags\": [\"spring-boot\", \"kafka\", \"docker\"],\n  \"configurationJson\": \"{}\"\n}" } } },
+        { "name": "Rate Blueprint", "request": { "method": "POST", "url": "{{base_url}}/api/v1/marketplace/blueprints/{{blueprint_id}}/rate", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"rating\": 5, \"comment\": \"Excellent!\" }" } } },
+        { "name": "Popular Blueprints", "request": { "method": "GET", "url": "{{base_url}}/api/v1/marketplace/blueprints/popular" } },
+        { "name": "Categories", "request": { "method": "GET", "url": "{{base_url}}/api/v1/marketplace/categories" } }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        { "name": "Dashboard Stats", "request": { "method": "GET", "url": "{{base_url}}/api/v1/admin/dashboard" } },
+        { "name": "List Users", "request": { "method": "GET", "url": "{{base_url}}/api/v1/admin/users?page=0&size=20" } },
+        { "name": "Create User", "request": { "method": "POST", "url": "{{base_url}}/api/v1/admin/users", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"username\": \"newuser\", \"email\": \"new@example.com\", \"role\": \"USER\" }" } } },
+        { "name": "Audit Logs", "request": { "method": "GET", "url": "{{base_url}}/api/v1/admin/audit?page=0&size=50" } },
+        { "name": "Pending Blueprints", "request": { "method": "GET", "url": "{{base_url}}/api/v1/admin/blueprints/pending" } }
+      ]
+    },
+    {
+      "name": "Organizations",
+      "item": [
+        { "name": "Create Organization", "request": { "method": "POST", "url": "{{base_url}}/api/v1/organizations", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"name\": \"My Company\", \"slug\": \"my-company\", \"ownerEmail\": \"admin@company.com\" }" } } },
+        { "name": "Get Usage", "request": { "method": "GET", "url": "{{base_url}}/api/v1/organizations/{{org_id}}/usage" } },
+        { "name": "List Members", "request": { "method": "GET", "url": "{{base_url}}/api/v1/organizations/{{org_id}}/members" } },
+        { "name": "Generate API Key", "request": { "method": "POST", "url": "{{base_url}}/api/v1/organizations/{{org_id}}/api-keys", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"name\": \"CI/CD Key\", \"scopes\": [\"generate\", \"validate\"] }" } } },
+        { "name": "Upgrade Plan", "request": { "method": "POST", "url": "{{base_url}}/api/v1/organizations/{{org_id}}/upgrade", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"plan\": \"PRO\" }" } } }
+      ]
+    },
+    {
+      "name": "i18n",
+      "item": [
+        { "name": "List Locales", "request": { "method": "GET", "url": "{{base_url}}/api/v1/i18n/locales" } },
+        { "name": "Get Messages (Accept-Language)", "request": { "method": "GET", "url": "{{base_url}}/api/v1/i18n/messages", "header": [{ "key": "Accept-Language", "value": "fr" }] } },
+        { "name": "Get Messages by Locale", "request": { "method": "GET", "url": "{{base_url}}/api/v1/i18n/messages/fr" } }
+      ]
+    }
+  ]
+}
