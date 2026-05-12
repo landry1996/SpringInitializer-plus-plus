@@ -1,4 +1,36 @@
 services:
+  backend:
+    build: .
+    container_name: springforge-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/springforge
+      SPRING_DATASOURCE_USERNAME: springforge
+      SPRING_DATASOURCE_PASSWORD: springforge
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8180/realms/springforge
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_started
+    networks:
+      - springforge-net
+
+  frontend:
+    build: ./springforge-frontend
+    container_name: springforge-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    networks:
+      - springforge-net
+
   postgres:
     image: postgres:16-alpine
     container_name: springforge-db
@@ -15,6 +47,99 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - springforge-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: springforge-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - springforge-net
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: springforge-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - springforge-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: springforge-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper
+    networks:
+      - springforge-net
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.5.0
+    container_name: springforge-schema-registry
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - kafka
+    networks:
+      - springforge-net
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: springforge-keycloak
+    command: start-dev
+    ports:
+      - "8180:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    networks:
+      - springforge-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: springforge-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - springforge-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: springforge-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - springforge-net
 
 volumes:
   pgdata:
+  redis-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  springforge-net:
+    driver: bridge
