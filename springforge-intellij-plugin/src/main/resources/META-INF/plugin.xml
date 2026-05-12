@@ -1,0 +1,39 @@
+<idea-plugin>
+    <id>com.springforge.intellij</id>
+    <name>SpringForge</name>
+    <version>1.0.0</version>
+    <vendor email="support@springforge.io" url="https://springforge.io">SpringForge</vendor>
+    <description><![CDATA[
+        Generate Spring Boot projects with advanced architecture patterns directly from IntelliJ IDEA.
+        Connects to your SpringForge server for intelligent project scaffolding with 8 architecture types,
+        observability, security, messaging, and more.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <moduleBuilder builderClass="com.springforge.intellij.SpringForgeModuleBuilder"/>
+        <applicationConfigurable parentId="tools"
+            instance="com.springforge.intellij.settings.SpringForgeSettingsConfigurable"
+            id="com.springforge.intellij.settings"
+            displayName="SpringForge"/>
+        <applicationService serviceImplementation="com.springforge.intellij.settings.SpringForgeSettings"/>
+        <notificationGroup id="SpringForge" displayType="BALLOON"/>
+    </extensions>
+
+    <actions>
+        <group id="SpringForge.Menu" text="SpringForge" description="SpringForge actions" popup="true">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <action id="SpringForge.NewProject"
+                class="com.springforge.intellij.actions.NewProjectAction"
+                text="New SpringForge Project"
+                description="Create a new Spring Boot project using SpringForge"
+                icon="AllIcons.Actions.New"/>
+            <action id="SpringForge.ValidateConfig"
+                class="com.springforge.intellij.actions.ValidateConfigAction"
+                text="Validate Configuration"
+                description="Validate current SpringForge configuration file"/>
+        </group>
+    </actions>
+</idea-plugin>
