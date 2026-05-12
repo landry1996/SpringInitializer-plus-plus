@@ -66,18 +66,27 @@ SpringForge est un générateur de projets Spring Boot enterprise-grade, constru
 ### 3.1 Structure hexagonale des modules
 
 ```
-src/main/java/com/springforge/
-├── config/              # Configurations transversales
-│   ├── OpenApiConfig.java          # Swagger/OpenAPI
-│   ├── CacheConfig.java            # Redis cache manager
-│   ├── AsyncConfig.java            # Thread pools async
-│   ├── DatabaseConfig.java         # HikariCP tuning
-│   └── CompressionConfig.java      # Gzip HTTP
-├── security/            # Couche sécurité
-│   ├── SecurityConfig.java         # Spring Security, CORS, CSP
-│   ├── RateLimitingFilter.java     # 60 req/min par client
-│   ├── SecurityHeadersFilter.java  # Headers OWASP
-│   └── InputSanitizer.java         # Validation entrées
+springforge-backend/src/main/java/com/springforge/
+├── shared/              # Module noyau partagé
+│   ├── config/
+│   │   ├── AsyncConfig.java            # Thread pool génération (3 core, 5 max)
+│   │   ├── CorsConfig.java            # CORS configurable via env
+│   │   ├── FreemarkerConfig.java       # Configuration templates
+│   │   ├── OpenApiConfig.java          # Swagger/OpenAPI
+│   │   └── WebSocketConfig.java        # WebSocket STOMP
+│   └── security/
+│       ├── SecurityConfig.java         # Spring Security, CORS, CSP, HSTS
+│       ├── JwtAuthenticationFilter.java # Filtre JWT
+│       ├── JwtService.java             # Génération/validation tokens
+│       ├── RateLimitingFilter.java     # 60 req/min par client
+│       └── LoginAttemptService.java    # Protection brute-force
+├── config/              # Configurations additionnelles (P5)
+│   ├── CacheConfig.java            # Redis cache manager multi-TTL
+│   ├── DatabaseConfig.java         # HikariCP tuning (pool 5-20)
+│   └── CompressionConfig.java      # Gzip HTTP (seuil 1Ko)
+├── security/            # Sécurité additionnelle (P5)
+│   ├── SecurityHeadersFilter.java  # Headers OWASP complets
+│   └── InputSanitizer.java         # Validation noms, packages, versions
 ├── recommendation/      # Moteur IA de recommandations
 │   ├── RecommendationType.java     # Enum (6 types)
 │   ├── Recommendation.java         # Record DTO
@@ -99,9 +108,6 @@ src/main/java/com/springforge/
 │   ├── AdminUser.java              # Entité utilisateur admin
 │   ├── AuditLog.java               # Entité audit
 │   ├── GenerationStats.java        # Entité statistiques
-│   ├── AdminUserRepository.java
-│   ├── AuditLogRepository.java
-│   ├── GenerationStatsRepository.java
 │   ├── AdminUserService.java
 │   ├── AuditService.java
 │   ├── DashboardService.java       # Agrégation stats
@@ -120,8 +126,16 @@ src/main/java/com/springforge/
 │   ├── LocaleConfig.java           # Resolver + MessageSource
 │   ├── I18nService.java            # Messages par locale
 │   └── I18nController.java         # API REST i18n
-├── generator/           # Pipeline de génération
-└── shared/              # Utilitaires communs
+├── generator/           # Pipeline de génération (25 fichiers)
+│   ├── api/             # Controller REST
+│   ├── application/     # Use cases, validators
+│   ├── domain/          # Entités, statuts, pipeline
+│   └── infrastructure/  # Persistance JPA
+├── user/                # Authentification (JWT, refresh tokens)
+├── blueprint/           # Définitions d'architecture
+├── template/            # Templates Freemarker
+├── project/             # Projets utilisateurs
+└── preset/              # Presets de configuration
 ```
 
 ### 3.2 Pipeline de génération (4 phases)
@@ -135,7 +149,7 @@ Phase 3: GENERATE    → Rendu Freemarker, assemblage arborescence
 Phase 4: POST-PROCESS → Formatage code, vérification compilation, ZIP
 ```
 
-Exécution asynchrone via `@Async("generationExecutor")` avec ThreadPool (4 core, 16 max).
+Exécution asynchrone via `@Async("generationExecutor")` avec ThreadPool (3 core, 5 max).
 
 ### 3.3 Modèle de données
 
@@ -213,8 +227,7 @@ Exécution asynchrone via `@Async("generationExecutor")` avec ThreadPool (4 core
 
 | Pool | Core | Max | Queue | Usage |
 |------|------|-----|-------|-------|
-| generationExecutor | 4 | 16 | 100 | Génération projets |
-| notificationExecutor | 2 | 8 | 200 | Notifications async |
+| generationExecutor | 3 | 5 | 25 | Génération projets |
 
 ### 5.4 Compression HTTP
 
@@ -253,12 +266,44 @@ Panels : Request Rate, Response Time p95, Error Rate, Active Requests, JVM Heap,
 
 ## 7. Déploiement
 
-### 7.1 Docker Compose (dev/staging)
+### 7.1 Modes de déploiement
 
-9 services orchestrés avec dépendances et health checks.
-Frontend servi via Nginx avec proxy reverse vers backend.
+| Mode | Fichier | Usage |
+|------|---------|-------|
+| Local (dev) | `docker-compose.yml` | Développement, 9 services complets |
+| VPS (prod) | `docker-compose.prod.yml` | Production, 5 services + Nginx HTTPS |
+| Kubernetes | `infra/k8s/*.yml` | Production haute disponibilité |
 
-### 7.2 Kubernetes (production)
+### 7.2 Docker Compose Local (développement)
+
+9 services orchestrés : backend, frontend, PostgreSQL, Redis, Kafka, Zookeeper, Schema Registry, Keycloak, Prometheus, Grafana.
+
+```bash
+docker compose up -d
+# Frontend: http://localhost:4200 | API: http://localhost:8080
+```
+
+### 7.3 Docker Compose VPS (production)
+
+5 services : Nginx (reverse proxy HTTPS), backend, frontend, PostgreSQL, Redis.
+Kafka et Keycloak sont optionnels (désactivés par défaut pour économiser la RAM).
+
+```bash
+cp .env.example .env  # Configurer les variables
+./deploy.sh init      # Premier déploiement
+./deploy.sh ssl domaine.com email@ex.com  # Activer HTTPS
+```
+
+| Paramètre | Configuration |
+|-----------|--------------|
+| Reverse proxy | Nginx avec TLS Let's Encrypt (auto-renew) |
+| Backend | 1 Go RAM max, healthcheck Actuator |
+| Frontend | 128 Mo RAM max, Nginx SPA routing |
+| PostgreSQL | 512 Mo RAM max, healthcheck pg_isready |
+| Redis | 192 Mo RAM max, LRU eviction 128 Mo |
+| Backups | pg_dump quotidien, rotation 7 jours |
+
+### 7.4 Kubernetes (production haute disponibilité)
 
 | Ressource | Configuration |
 |-----------|--------------|
@@ -272,13 +317,24 @@ Frontend servi via Nginx avec proxy reverse vers backend.
 | Redis | 256Mo max, LRU eviction |
 | Kafka + Zookeeper | Dedicated pods |
 
-### 7.3 CI/CD (GitHub Actions)
+### 7.5 CI/CD (GitHub Actions)
 
 | Workflow | Trigger | Actions |
 |----------|---------|---------|
 | ci.yml | Push/PR | Build Maven, tests, build frontend, security scan |
 | release.yml | Tag v* | Build Docker images, push GHCR, deploy staging |
 | deploy-prod.yml | Manual | Validation + déploiement production |
+
+### 7.6 Configuration conditionnelle
+
+Les services Kafka et Keycloak sont optionnels en production :
+
+| Variable | Défaut | Effet |
+|----------|--------|-------|
+| `KAFKA_ENABLED` | false | Désactive l'auto-configuration Kafka |
+| `KEYCLOAK_ENABLED` | false | Désactive la validation JWT via Keycloak |
+| `SPRING_KAFKA_BOOTSTRAP_SERVERS` | (vide) | Pas de connexion Kafka |
+| `KEYCLOAK_ISSUER_URI` | (vide) | Auth JWT locale uniquement |
 
 ---
 
@@ -345,22 +401,48 @@ Frontend servi via Nginx avec proxy reverse vers backend.
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                    security                          │
-│  (RateLimit, CORS, CSP, Headers, InputSanitizer)    │
+│                 shared/security                      │
+│  (JWT, RateLimit, CORS, CSP, HSTS, LoginAttempt)    │
 └──────────────────────┬──────────────────────────────┘
                        │ protège
 ┌──────────────────────▼──────────────────────────────┐
+│               security/ + config/                    │
+│  (SecurityHeaders, InputSanitizer, Cache, DB, Gzip) │
+└──────────────────────┬──────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────┐
 │                  API Layer                           │
 │  (Controllers : Recommendation, Marketplace,        │
-│   Admin, Organization, I18n, Generator)             │
+│   Admin, Organization, I18n, Generator, Auth)       │
 └──────┬───────┬───────┬───────┬───────┬──────────────┘
        │       │       │       │       │
 ┌──────▼──┐ ┌──▼────┐ ┌▼─────┐ ┌▼────┐ ┌▼─────┐
-│recommend│ │market │ │admin │ │tenant│ │i18n  │
-│ation    │ │place  │ │      │ │      │ │      │
+│recommend│ │market │ │admin │ │tenant│ │genera │
+│ation    │ │place  │ │      │ │      │ │tor   │
 └────┬────┘ └───┬───┘ └──┬───┘ └──┬───┘ └──┬───┘
      │          │         │        │        │
 ┌────▼──────────▼─────────▼────────▼────────▼─────┐
-│              PostgreSQL + Redis + Kafka           │
+│         PostgreSQL + Redis (+ Kafka optionnel)    │
 └──────────────────────────────────────────────────┘
 ```
+
+---
+
+## 11. Fichiers de déploiement
+
+| Fichier | Rôle |
+|---------|------|
+| `Dockerfile` | Image backend multi-stage (build Maven → JRE Alpine) |
+| `springforge-frontend/Dockerfile` | Image frontend multi-stage (Node build → Nginx) |
+| `springforge-frontend/nginx.conf` | Proxy API + WebSocket + SPA routing |
+| `docker-compose.yml` | Stack dev complète (9 services) |
+| `docker-compose.prod.yml` | Stack prod VPS (5 services + HTTPS) |
+| `deploy.sh` | Script déploiement VPS (init, update, ssl, backup) |
+| `.env.example` | Template variables d'environnement |
+| `.dockerignore` | Exclusions build Docker |
+| `infra/nginx/nginx.conf` | Config Nginx reverse proxy prod |
+| `infra/nginx/conf.d/default.conf` | Vhost HTTPS + routing |
+| `infra/nginx/conf.d/default-nossl.conf.example` | Vhost HTTP (premier démarrage) |
+| `infra/prometheus/prometheus.yml` | Scraping métriques Actuator |
+| `infra/k8s/*.yml` | 12 manifestes Kubernetes |
+| `infra/monitoring/*.yml` | ServiceMonitor, alertes, dashboards |

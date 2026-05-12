@@ -325,25 +325,47 @@ springforge config show
 
 ## 6. Intégrations externes
 
-| Système | Usage | Protocole |
-|---------|-------|-----------|
-| Keycloak | Authentification SSO | OpenID Connect |
-| Kafka | Événements async (génération, audit) | PLAINTEXT |
-| Redis | Cache applicatif | Redis Protocol |
-| PostgreSQL | Persistance données | JDBC |
-| Prometheus | Collecte métriques | HTTP scrape |
-| Grafana | Visualisation | HTTP |
-| GitHub Actions | CI/CD | Webhooks |
-| GHCR | Registry Docker | OCI |
+| Système | Usage | Protocole | Obligatoire |
+|---------|-------|-----------|-------------|
+| PostgreSQL | Persistance données | JDBC | Oui |
+| Redis | Cache applicatif | Redis Protocol | Oui |
+| Keycloak | Authentification SSO | OpenID Connect | Non (optionnel) |
+| Kafka | Événements async (génération, audit) | PLAINTEXT | Non (optionnel) |
+| Prometheus | Collecte métriques | HTTP scrape | Non (monitoring) |
+| Grafana | Visualisation métriques | HTTP | Non (monitoring) |
+| GitHub Actions | CI/CD | Webhooks | Non (automation) |
+| GHCR | Registry Docker | OCI | Non (release) |
+| Let's Encrypt | Certificats SSL | ACME | Non (HTTPS prod) |
 
 ---
 
-## 7. Contraintes et limites connues
+## 7. Modes de fonctionnement
+
+### 7.1 Mode minimal (VPS petit budget)
+
+Services requis : Backend + Frontend + PostgreSQL + Redis
+RAM minimale : 2 Go
+Kafka et Keycloak désactivés.
+
+### 7.2 Mode complet (développement local)
+
+Tous les 9 services actifs : Backend, Frontend, PostgreSQL, Redis, Kafka, Zookeeper, Schema Registry, Keycloak, Prometheus, Grafana.
+RAM requise : 5 Go+
+
+### 7.3 Mode production (Kubernetes)
+
+Déploiement haute disponibilité avec auto-scaling, monitoring complet, et tous les services activés.
+
+---
+
+## 8. Contraintes et limites connues
 
 | Contrainte | Impact | Mitigation |
 |-----------|--------|-----------|
 | Génération synchrone dans le ZIP | Temps limité à 60s | Pipeline async 4 phases |
-| Redis single instance | Pas de HA cache | Acceptable en mode dégradé (fallback DB) |
-| Kafka single broker | Pas de réplication | Suffisant pour le volume actuel |
+| Redis single instance | Pas de HA cache | Acceptable en mode dégradé |
+| Kafka optionnel en prod | Pas d'événements async | Génération fonctionne sans Kafka |
+| Keycloak optionnel en prod | Auth JWT locale uniquement | SSO désactivé, JWT interne suffit |
 | Plan FREE limité à 5 gen/mois | Friction pour adoption | Période d'essai PRO 14 jours |
-| i18n 4 langues seulement | Couverture géographique limitée | Extensible facilement (ajout fichier .properties + .json) |
+| i18n 4 langues seulement | Couverture géographique limitée | Extensible (ajout fichier .properties + .json) |
+| VPS 2 Go minimum | Pas de monitoring intégré | Monitoring via mode Kubernetes uniquement |

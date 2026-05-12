@@ -149,16 +149,37 @@ Requête HTTP
 
 ### 2.2 Lancement rapide
 
+#### Option A : Tout avec Docker (recommandé, le plus simple)
+
 ```bash
 # 1. Cloner le projet
 git clone https://github.com/landry1996/SpringInitializer-plus-plus.git
 cd SpringInitializer-plus-plus
 
-# 2. Démarrer l'infrastructure
-docker compose up -d postgres redis kafka zookeeper keycloak
+# 2. Lancer toute la stack (1 commande)
+docker compose up -d
 
-# 3. Lancer le backend
-./mvnw spring-boot:run
+# 3. Attendre ~30 secondes que le backend démarre, puis ouvrir :
+# Frontend : http://localhost:4200
+# API : http://localhost:8080
+# Swagger : http://localhost:8080/swagger-ui.html
+# Keycloak : http://localhost:8180 (admin/admin)
+# Grafana : http://localhost:3000 (admin/admin)
+```
+
+#### Option B : Backend en développement (hot-reload)
+
+```bash
+# 1. Cloner le projet
+git clone https://github.com/landry1996/SpringInitializer-plus-plus.git
+cd SpringInitializer-plus-plus
+
+# 2. Démarrer uniquement l'infrastructure
+docker compose up -d postgres redis
+
+# 3. Lancer le backend (avec rechargement automatique)
+cd springforge-backend
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 
 # 4. Lancer le frontend (autre terminal)
 cd springforge-frontend
@@ -171,30 +192,45 @@ npm start
 # Swagger : http://localhost:8080/swagger-ui.html
 ```
 
+#### Option C : Déployer sur un VPS
+
+```bash
+# Sur le VPS (voir GUIDE_DEPLOIEMENT.md pour le détail)
+git clone https://github.com/landry1996/SpringInitializer-plus-plus.git /opt/springforge
+cd /opt/springforge
+cp .env.example .env && nano .env  # configurer les secrets
+chmod +x deploy.sh && ./deploy.sh init
+# → http://votre-ip-vps
+```
+
 ### 2.3 Structure du projet expliquée
 
 ```
 SpringInitializer-plus-plus/
 │
-├── src/main/java/com/springforge/    ← Code backend Java
-│   ├── config/                       ← Configs Spring (cache, async, DB, sécurité)
-│   ├── security/                     ← Filtres et validation
-│   ├── recommendation/               ← Moteur IA
-│   │   ├── rules/                    ← Règles individuelles
-│   │   ├── RecommendationService.java
-│   │   └── RecommendationController.java
-│   ├── marketplace/                  ← Blueprints communautaires
-│   ├── admin/                        ← Administration
-│   ├── tenant/                       ← Multi-organisation
-│   ├── i18n/                         ← Traductions
-│   └── generator/                    ← Pipeline de génération
-│
-├── src/main/resources/
-│   ├── db/migration/                 ← Scripts SQL Flyway (V1 à V9)
-│   ├── messages.properties           ← Traductions backend
-│   └── application.yml               ← Configuration Spring
-│
-├── src/test/java/                    ← Tests unitaires JUnit 5
+├── springforge-backend/              ← Code backend Java (tout est ici)
+│   ├── src/main/java/com/springforge/
+│   │   ├── shared/                   ← Module noyau (security, config, websocket)
+│   │   ├── config/                   ← Configs additionnelles (cache, DB, compression)
+│   │   ├── security/                 ← Filtres additionnels (headers, sanitizer)
+│   │   ├── recommendation/           ← Moteur IA + rules/
+│   │   ├── marketplace/              ← Blueprints communautaires
+│   │   ├── admin/                    ← Administration
+│   │   ├── tenant/                   ← Multi-organisation
+│   │   ├── i18n/                     ← Traductions
+│   │   ├── generator/                ← Pipeline de génération (25 fichiers)
+│   │   ├── user/                     ← Auth JWT
+│   │   ├── blueprint/                ← Définitions architecture
+│   │   └── template/                 ← Templates Freemarker
+│   ├── src/main/resources/
+│   │   ├── db/migration/             ← Scripts SQL Flyway (V1 à V9)
+│   │   ├── messages*.properties      ← Traductions backend (EN, FR, DE, ES)
+│   │   ├── application.yml           ← Config de base
+│   │   ├── application-dev.yml       ← Config développement
+│   │   ├── application-prod.yml      ← Config production (env vars)
+│   │   └── application-test.yml      ← Config tests
+│   ├── src/test/java/                ← Tests unitaires JUnit 5
+│   └── pom.xml                       ← Dépendances Maven
 │
 ├── springforge-frontend/             ← Application Angular 18
 │   ├── src/app/
@@ -222,15 +258,20 @@ SpringInitializer-plus-plus/
 ├── infra/
 │   ├── k8s/                          ← Manifestes Kubernetes (12 fichiers)
 │   ├── monitoring/                   ← Grafana + Alertes
-│   └── prometheus/                   ← Config scraping
+│   ├── prometheus/                   ← Config scraping
+│   └── nginx/                        ← Reverse proxy production (HTTPS)
 │
 ├── .github/workflows/                ← CI/CD GitHub Actions
 │   ├── ci.yml                        ← Build + Test
 │   ├── release.yml                   ← Docker + Deploy staging
 │   └── deploy-prod.yml              ← Deploy production
 │
-├── docker-compose.yml                ← Stack locale (9 services)
-├── Dockerfile                        ← Image backend
+├── docker-compose.yml                ← Stack locale dev (9 services)
+├── docker-compose.prod.yml           ← Stack production VPS (5 services + HTTPS)
+├── deploy.sh                         ← Script déploiement VPS
+├── Dockerfile                        ← Image backend multi-stage
+├── .env.example                      ← Template variables d'environnement
+├── .dockerignore                     ← Exclusions build Docker
 └── docs/api/postman-collection.json  ← Collection Postman
 ```
 
@@ -377,7 +418,7 @@ class TestingRecommendationRuleTest {
 
 #### Exemple : Ajouter une nouvelle langue (i18n)
 
-**1. Backend** — Créer `src/main/resources/messages_pt.properties` :
+**1. Backend** — Créer `springforge-backend/src/main/resources/messages_pt.properties` :
 
 ```properties
 app.name=SpringForge
@@ -578,8 +619,8 @@ cd springforge-frontend && npx playwright test
 cd springforge-frontend && npx playwright test --headed
 
 # Rapport de couverture
-./mvnw test jacoco:report
-# Ouvrir target/site/jacoco/index.html
+cd springforge-backend && ./mvnw test jacoco:report
+# Ouvrir springforge-backend/target/site/jacoco/index.html
 ```
 
 ---
@@ -685,10 +726,10 @@ frame-ancestors 'none';      → Personne ne peut nous iframer
 
 **Pourquoi multi-stage ?** Le JDK complet + Maven + sources = 800 Mo. En production, on n'a besoin que du JRE + le JAR = 200 Mo.
 
-### 6.2 Docker Compose : orchestration locale
+### 6.2 Docker Compose : deux modes
 
+**Mode local (docker-compose.yml)** — développement, tous les services :
 ```yaml
-# Simplifié pour comprendre les relations
 services:
   backend:    → dépend de postgres, kafka, redis
   frontend:   → dépend de backend (proxy nginx → backend:8080)
@@ -701,7 +742,35 @@ services:
   grafana:    → visualise les métriques prometheus
 ```
 
-### 6.3 Kubernetes : production
+**Mode production VPS (docker-compose.prod.yml)** — optimisé, services essentiels :
+```yaml
+services:
+  nginx:      → reverse proxy HTTPS (Let's Encrypt) → route vers backend/frontend
+  backend:    → dépend de postgres, redis (Kafka/Keycloak optionnels)
+  frontend:   → sert l'Angular SPA via Nginx interne
+  postgres:   → base de données avec healthcheck
+  redis:      → cache avec limite mémoire 128 Mo
+  certbot:    → renouvellement automatique certificats SSL
+```
+
+**Pourquoi deux fichiers ?**
+- En dev : on veut TOUT (Kafka, Keycloak, monitoring) pour tester
+- En prod sur VPS 2 Go : on garde le minimum pour économiser la RAM
+- Kafka et Keycloak sont désactivés via variables d'environnement
+
+### 6.3 Script de déploiement VPS (deploy.sh)
+
+```bash
+./deploy.sh init    # Premier lancement (build + start)
+./deploy.sh update  # Mise à jour (git pull + rebuild + restart)
+./deploy.sh ssl     # Activer HTTPS avec Let's Encrypt
+./deploy.sh status  # Vérifier que tout tourne
+./deploy.sh logs    # Voir les logs en temps réel
+./deploy.sh backup  # Sauvegarder PostgreSQL
+./deploy.sh stop    # Arrêter tout
+```
+
+### 6.4 Kubernetes : production haute disponibilité
 
 | Concept K8s | Rôle dans SpringForge |
 |-------------|----------------------|
