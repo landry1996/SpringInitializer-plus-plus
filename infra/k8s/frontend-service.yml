@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: springforge-frontend-service
+  namespace: springforge
+  labels:
+    app.kubernetes.io/name: springforge-frontend
+    app.kubernetes.io/component: frontend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: springforge-frontend
