@@ -1,0 +1,14 @@
+.git
+.github
+.env
+*.md
+docs/
+documentations/
+infra/
+springforge-cli/
+springforge-intellij-plugin/
+springforge-frontend/node_modules/
+springforge-backend/target/
+src/
+backups/
+P*.md

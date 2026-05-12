@@ -44,10 +44,18 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/versions/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/dependencies/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/projects/validate").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/projects/generate").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/projects/preview").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/dependencies/check").permitAll()
+                        .requestMatchers("/api/v1/marketplace/**").permitAll()
+                        .requestMatchers("/api/v1/i18n/**").permitAll()
+                        .requestMatchers("/api/v1/recommendations/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
-                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/health/**").permitAll()
+                        .requestMatchers("/actuator/info").permitAll()
+                        .requestMatchers("/actuator/prometheus").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
@@ -58,6 +66,9 @@ public class SecurityConfig {
                         .httpStrictTransportSecurity(hsts -> hsts
                                 .includeSubDomains(true)
                                 .maxAgeInSeconds(31536000))
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+                                "img-src 'self' data:; font-src 'self'; connect-src 'self' ws: wss:; frame-ancestors 'none'"))
                 )
                 .build();
     }

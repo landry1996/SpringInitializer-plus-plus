@@ -35,3 +35,10 @@ Thumbs.db
 # Generated
 generated/
 *.zip
+
+# Backups
+backups/
+
+# Docker volumes
+pgdata/
+redis-data/

@@ -1,7 +1,7 @@
 spring:
   datasource:
-    url: ${DATABASE_URL}
-    username: ${DATABASE_USERNAME}
+    url: ${DATABASE_URL:jdbc:postgresql://postgres:5432/springforge}
+    username: ${DATABASE_USERNAME:springforge}
     password: ${DATABASE_PASSWORD}
     hikari:
       maximum-pool-size: 10
@@ -9,24 +9,42 @@ spring:
       connection-timeout: 20000
   jpa:
     show-sql: false
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:}
+    consumer:
+      auto-startup: ${KAFKA_ENABLED:false}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:}
 
 server:
   port: ${PORT:8080}
 
 app:
   jwt:
+    secret: ${JWT_SECRET}
     access-token-ttl: 900000
     refresh-token-ttl: 604800000
   cors:
     allowed-origins: ${CORS_ORIGINS}
   generation:
     output-dir: ${GENERATION_OUTPUT_DIR:/app/generated}
+  kafka:
+    enabled: ${KAFKA_ENABLED:false}
+  keycloak:
+    enabled: ${KEYCLOAK_ENABLED:false}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
       show-details: never

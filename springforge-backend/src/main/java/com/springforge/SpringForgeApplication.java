@@ -2,10 +2,13 @@ package com.springforge;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.modulith.Modulithic;
 import org.springframework.scheduling.annotation.EnableAsync;
 
-@SpringBootApplication
+@SpringBootApplication(exclude = {
+        KafkaAutoConfiguration.class
+})
 @EnableAsync
 @Modulithic(
         systemName = "SpringForge",
