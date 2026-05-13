@@ -26,5 +26,20 @@ export const routes: Routes = [
     loadComponent: () => import('./features/template-editor/template-editor.component').then(m => m.TemplateEditorComponent),
     canActivate: [authGuard]
   },
+  {
+    path: 'settings/billing',
+    loadComponent: () => import('./features/billing/billing.component').then(m => m.BillingComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'settings/webhooks',
+    loadComponent: () => import('./features/webhooks/webhooks.component').then(m => m.WebhooksComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'ai/chat',
+    loadComponent: () => import('./features/ai/ai-chat-panel.component').then(m => m.AiChatPanelComponent),
+    canActivate: [authGuard]
+  },
   { path: '**', redirectTo: '/wizard' }
 ];

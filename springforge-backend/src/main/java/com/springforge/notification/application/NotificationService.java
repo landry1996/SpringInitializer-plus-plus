@@ -2,6 +2,7 @@ package com.springforge.notification.application;
 
 import com.springforge.notification.domain.*;
 import com.springforge.notification.infrastructure.DeliveryLogRepository;
+import com.springforge.notification.infrastructure.EmailNotificationSender;
 import com.springforge.notification.infrastructure.WebhookConfigRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -35,14 +36,18 @@ public class NotificationService {
     private final DeliveryLogRepository deliveryLogRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final EmailNotificationSender emailSender;
 
     public NotificationService(WebhookConfigRepository webhookConfigRepository,
                               DeliveryLogRepository deliveryLogRepository,
-                              ObjectMapper objectMapper) {
+                              ObjectMapper objectMapper,
+                              @org.springframework.beans.factory.annotation.Autowired(required = false)
+                              EmailNotificationSender emailSender) {
         this.webhookConfigRepository = webhookConfigRepository;
         this.deliveryLogRepository = deliveryLogRepository;
         this.restTemplate = new RestTemplate();
         this.objectMapper = objectMapper;
+        this.emailSender = emailSender;
     }
 
     @Async
@@ -69,6 +74,11 @@ public class NotificationService {
 
     private void deliver(WebhookConfig config, DeliveryLog deliveryLog, String payload) {
         try {
+            if (config.getChannel() == NotificationChannel.EMAIL) {
+                deliverEmail(config, deliveryLog, payload);
+                return;
+            }
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
@@ -92,6 +102,22 @@ public class NotificationService {
             deliveryLog.recordFailure(0, e.getMessage(), nextRetry);
             deliveryLogRepository.save(deliveryLog);
             log.warn("Webhook delivery failed for {}, attempt {}: {}", config.getUrl(), deliveryLog.getAttemptCount(), e.getMessage());
+        }
+    }
+
+    private void deliverEmail(WebhookConfig config, DeliveryLog deliveryLog, String payload) {
+        try {
+            if (emailSender == null) {
+                throw new IllegalStateException("Email notifications are not enabled");
+            }
+            emailSender.send(config.getUrl(), deliveryLog.getEventType(), payload);
+            deliveryLog.recordSuccess(200, "Email sent successfully");
+            deliveryLogRepository.save(deliveryLog);
+        } catch (Exception e) {
+            LocalDateTime nextRetry = LocalDateTime.now().plusMinutes((long) Math.pow(2, deliveryLog.getAttemptCount()));
+            deliveryLog.recordFailure(0, e.getMessage(), nextRetry);
+            deliveryLogRepository.save(deliveryLog);
+            log.warn("Email delivery failed for {}, attempt {}: {}", config.getUrl(), deliveryLog.getAttemptCount(), e.getMessage());
         }
     }
 
