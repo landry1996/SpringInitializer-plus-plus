@@ -51,6 +51,13 @@ app:
   generation:
     output-dir: ${GENERATION_OUTPUT_DIR:./generated}
     max-concurrent: 5
+  billing:
+    stripe:
+      secret-key: ${STRIPE_SECRET_KEY:}
+      webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+      pro-price-id: ${STRIPE_PRO_PRICE_ID:}
+      enterprise-price-id: ${STRIPE_ENTERPRISE_PRICE_ID:}
+    frontend-url: ${BILLING_FRONTEND_URL:http://localhost:4200}
   storage:
     type: ${STORAGE_TYPE:filesystem}
     retention-days: ${STORAGE_RETENTION_DAYS:30}

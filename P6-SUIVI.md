@@ -6,7 +6,7 @@
 |---|------|--------|-------------|
 | 1 | MongoDB Support | ✅ DONE | Support MongoDB comme option de DB dans le générateur (templates, config, dépendances) |
 | 2 | Stockage MinIO | ✅ DONE | Persistence des ZIPs générés sur object storage S3-compatible |
-| 3 | Billing Stripe | ⬜ TODO | Paiement réel, webhooks Stripe, gestion abonnements, factures |
+| 3 | Billing Stripe | ✅ DONE | Paiement réel, webhooks Stripe, gestion abonnements, factures |
 | 4 | VS Code Extension | ⬜ TODO | Plugin VS Code complémentaire à IntelliJ pour génération de projets |
 | 5 | Template Editor visuel | ⬜ TODO | Éditeur WYSIWYG de blueprints dans le frontend Angular |
 | 6 | LLM Integration | ⬜ TODO | Génération de code intelligente via Claude/GPT (code review, suggestions) |

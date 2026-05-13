@@ -47,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/projects/generate").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/projects/preview").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/dependencies/check").permitAll()
+                        .requestMatchers("/api/v1/webhooks/**").permitAll()
                         .requestMatchers("/api/v1/marketplace/**").permitAll()
                         .requestMatchers("/api/v1/i18n/**").permitAll()
                         .requestMatchers("/api/v1/recommendations/**").permitAll()

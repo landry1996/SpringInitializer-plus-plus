@@ -175,6 +175,13 @@
             <version>8.5.13</version>
         </dependency>
 
+        <!-- Stripe payments -->
+        <dependency>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
+            <version>26.1.0</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
