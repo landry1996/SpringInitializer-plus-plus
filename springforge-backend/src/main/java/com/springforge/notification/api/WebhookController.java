@@ -2,8 +2,8 @@ package com.springforge.notification.api;
 
 import com.springforge.notification.application.NotificationService;
 import com.springforge.notification.domain.*;
-import com.springforge.notification.infrastructure.DeliveryLogRepository;
-import com.springforge.notification.infrastructure.WebhookConfigRepository;
+import com.springforge.notification.domain.DeliveryLogRepository;
+import com.springforge.notification.domain.WebhookConfigRepository;
 import com.springforge.shared.security.AuthenticatedUser;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

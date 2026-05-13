@@ -18,6 +18,14 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:true}
 
 server:
   port: 8080
@@ -83,12 +91,3 @@ notification:
     enabled: ${NOTIFICATION_EMAIL_ENABLED:false}
     from: ${NOTIFICATION_EMAIL_FROM:notifications@springforge.io}
 
-spring:
-  mail:
-    host: ${SMTP_HOST:localhost}
-    port: ${SMTP_PORT:587}
-    username: ${SMTP_USERNAME:}
-    password: ${SMTP_PASSWORD:}
-    properties:
-      mail.smtp.auth: ${SMTP_AUTH:true}
-      mail.smtp.starttls.enable: ${SMTP_STARTTLS:true}

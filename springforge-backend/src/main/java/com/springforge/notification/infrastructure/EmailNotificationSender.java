@@ -1,5 +1,6 @@
 package com.springforge.notification.infrastructure;
 
+import com.springforge.notification.domain.EmailSender;
 import com.springforge.notification.domain.NotificationEventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +14,7 @@ import jakarta.mail.internet.MimeMessage;
 
 @Component
 @ConditionalOnProperty(name = "notification.email.enabled", havingValue = "true")
-public class EmailNotificationSender {
+public class EmailNotificationSender implements EmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(EmailNotificationSender.class);
 
@@ -26,6 +27,7 @@ public class EmailNotificationSender {
         this.fromAddress = fromAddress;
     }
 
+    @Override
     public void send(String toAddress, NotificationEventType eventType, String payload) {
         try {
             MimeMessage message = mailSender.createMimeMessage();

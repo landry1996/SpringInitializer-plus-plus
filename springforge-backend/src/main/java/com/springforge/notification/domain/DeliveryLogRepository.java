@@ -1,6 +1,5 @@
-package com.springforge.notification.infrastructure;
+package com.springforge.notification.domain;
 
-import com.springforge.notification.domain.DeliveryLog;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

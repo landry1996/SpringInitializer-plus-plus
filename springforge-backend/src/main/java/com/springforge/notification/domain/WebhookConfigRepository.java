@@ -1,7 +1,5 @@
-package com.springforge.notification.infrastructure;
+package com.springforge.notification.domain;
 
-import com.springforge.notification.domain.NotificationEventType;
-import com.springforge.notification.domain.WebhookConfig;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

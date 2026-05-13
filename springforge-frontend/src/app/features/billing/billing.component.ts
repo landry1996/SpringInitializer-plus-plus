@@ -15,7 +15,7 @@ import { Subscription, Invoice } from './billing.model';
         <div class="trial-icon">&#9733;</div>
         <div class="trial-text">
           <strong>PRO Trial Active</strong>
-          <span>Your 14-day free trial ends on {{ subscription.trialEndsAt | date:'mediumDate' }}. Subscribe to keep PRO features.</span>
+          <span>Your 14-day free trial ends on {{ subscription!.trialEndsAt | date:'mediumDate' }}. Subscribe to keep PRO features.</span>
         </div>
         <button class="btn-trial-upgrade" (click)="checkout('PRO')">Subscribe Now</button>
       </div>

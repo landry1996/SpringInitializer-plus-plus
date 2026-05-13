@@ -1,6 +1,5 @@
-package com.springforge.billing.infrastructure;
+package com.springforge.billing.domain;
 
-import com.springforge.billing.domain.Invoice;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

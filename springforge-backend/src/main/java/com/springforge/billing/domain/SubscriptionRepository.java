@@ -1,6 +1,5 @@
-package com.springforge.billing.infrastructure;
+package com.springforge.billing.domain;
 
-import com.springforge.billing.domain.Subscription;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

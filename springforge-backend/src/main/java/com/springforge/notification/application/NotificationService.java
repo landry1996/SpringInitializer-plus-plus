@@ -1,9 +1,6 @@
 package com.springforge.notification.application;
 
 import com.springforge.notification.domain.*;
-import com.springforge.notification.infrastructure.DeliveryLogRepository;
-import com.springforge.notification.infrastructure.EmailNotificationSender;
-import com.springforge.notification.infrastructure.WebhookConfigRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,13 +33,13 @@ public class NotificationService {
     private final DeliveryLogRepository deliveryLogRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
-    private final EmailNotificationSender emailSender;
+    private final EmailSender emailSender;
 
     public NotificationService(WebhookConfigRepository webhookConfigRepository,
                               DeliveryLogRepository deliveryLogRepository,
                               ObjectMapper objectMapper,
                               @org.springframework.beans.factory.annotation.Autowired(required = false)
-                              EmailNotificationSender emailSender) {
+                              EmailSender emailSender) {
         this.webhookConfigRepository = webhookConfigRepository;
         this.deliveryLogRepository = deliveryLogRepository;
         this.restTemplate = new RestTemplate();

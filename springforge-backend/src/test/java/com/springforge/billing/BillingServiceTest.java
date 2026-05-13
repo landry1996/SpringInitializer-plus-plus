@@ -2,8 +2,8 @@ package com.springforge.billing;
 
 import com.springforge.billing.application.BillingService;
 import com.springforge.billing.domain.*;
-import com.springforge.billing.infrastructure.InvoiceRepository;
-import com.springforge.billing.infrastructure.SubscriptionRepository;
+import com.springforge.billing.domain.InvoiceRepository;
+import com.springforge.billing.domain.SubscriptionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

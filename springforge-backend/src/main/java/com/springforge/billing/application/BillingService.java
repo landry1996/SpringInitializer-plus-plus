@@ -1,8 +1,6 @@
 package com.springforge.billing.application;
 
 import com.springforge.billing.domain.*;
-import com.springforge.billing.infrastructure.InvoiceRepository;
-import com.springforge.billing.infrastructure.SubscriptionRepository;
 import com.stripe.Stripe;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;

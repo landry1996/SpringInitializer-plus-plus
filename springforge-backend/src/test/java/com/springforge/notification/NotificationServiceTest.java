@@ -2,8 +2,8 @@ package com.springforge.notification;
 
 import com.springforge.notification.application.NotificationService;
 import com.springforge.notification.domain.*;
-import com.springforge.notification.infrastructure.DeliveryLogRepository;
-import com.springforge.notification.infrastructure.WebhookConfigRepository;
+import com.springforge.notification.domain.DeliveryLogRepository;
+import com.springforge.notification.domain.WebhookConfigRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
