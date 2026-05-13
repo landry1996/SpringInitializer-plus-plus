@@ -4,16 +4,16 @@
 
 | # | Item | Statut | Description |
 |---|------|--------|-------------|
-| 1 | Frontend Billing | ⬜ TODO | Page Angular abonnements, checkout Stripe, historique factures |
-| 2 | Frontend Webhooks | ⬜ TODO | Page Angular configuration webhooks, historique envois, test |
-| 3 | Frontend Chat IA | ⬜ TODO | Panel chat SSE dans le wizard, bouton "Ask AI", code review panel |
-| 4 | Canal Email (SMTP) | ⬜ TODO | Implementation NotificationService pour canal EMAIL (SendGrid/SMTP) |
-| 5 | Tests unitaires P6 | ⬜ TODO | JUnit 5 pour storage, billing, ai, notification |
-| 6 | Generateur Gradle | ⬜ TODO | Support Gradle Groovy/Kotlin DSL dans le pipeline de generation |
-| 7 | Generateur MySQL | ⬜ TODO | Support MySQL comme option DB dans le wizard + templates |
-| 8 | Tests E2E P6 | ⬜ TODO | Playwright pour billing, webhooks, template editor, chat IA |
-| 9 | Periode d'essai PRO | ⬜ TODO | Trial 14 jours automatique a l'inscription |
-| 10 | Publication extensions | ⬜ TODO | VS Code Marketplace + JetBrains Marketplace |
+| 1 | Frontend Billing | ✅ DONE | Page Angular abonnements, checkout Stripe, historique factures |
+| 2 | Frontend Webhooks | ✅ DONE | Page Angular configuration webhooks, historique envois, test |
+| 3 | Frontend Chat IA | ✅ DONE | Panel chat SSE dans le wizard, bouton "Ask AI", code review panel |
+| 4 | Canal Email (SMTP) | ✅ DONE | Implementation NotificationService pour canal EMAIL (SendGrid/SMTP) |
+| 5 | Tests unitaires P6 | ✅ DONE | JUnit 5 pour storage, billing, ai, notification |
+| 6 | Generateur Gradle | ✅ DONE | Support Gradle Groovy/Kotlin DSL dans le pipeline de generation |
+| 7 | Generateur MySQL | ✅ DONE | Support MySQL comme option DB dans le wizard + templates |
+| 8 | Tests E2E P6 | ✅ DONE | Playwright pour billing, webhooks, chat IA |
+| 9 | Periode d'essai PRO | ✅ DONE | Trial 14 jours automatique a l'inscription |
+| 10 | Publication extensions | ✅ DONE | VS Code Marketplace + JetBrains Marketplace (CI workflow) |
 
 ## Details techniques
 
