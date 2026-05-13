@@ -1,6 +1,6 @@
 package com.springforge.recommendation.rules;
 
-import com.springforge.core.model.ProjectConfiguration;
+import com.springforge.generator.domain.ProjectConfiguration;
 import com.springforge.recommendation.Recommendation;
 import com.springforge.recommendation.RecommendationRule;
 import com.springforge.recommendation.RecommendationType;

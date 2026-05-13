@@ -1,6 +1,6 @@
 package com.springforge.recommendation;
 
-import com.springforge.core.model.ProjectConfiguration;
+import com.springforge.generator.domain.ProjectConfiguration;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;

@@ -67,7 +67,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: springforge-frontend
-        run: npm ci
+        run: npm install
 
       - name: Lint
         working-directory: springforge-frontend

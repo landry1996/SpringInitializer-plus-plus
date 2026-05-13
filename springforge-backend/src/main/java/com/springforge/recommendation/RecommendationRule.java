@@ -1,6 +1,6 @@
 package com.springforge.recommendation;
 
-import com.springforge.core.model.ProjectConfiguration;
+import com.springforge.generator.domain.ProjectConfiguration;
 
 import java.util.List;
 
