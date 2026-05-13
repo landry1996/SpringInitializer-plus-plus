@@ -1,8 +1,9 @@
-FROM eclipse-temurin:21-jdk-alpine AS build
+FROM maven:3.9-eclipse-temurin-21-alpine AS build
 WORKDIR /app
-COPY springforge-backend/ .
-RUN chmod +x mvnw 2>/dev/null || true
-RUN ./mvnw clean package -DskipTests -Pprod || mvn clean package -DskipTests -Pprod
+COPY springforge-backend/pom.xml .
+RUN mvn dependency:go-offline -B
+COPY springforge-backend/src ./src
+RUN mvn clean package -DskipTests -B
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app

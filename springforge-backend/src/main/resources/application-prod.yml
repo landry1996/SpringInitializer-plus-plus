@@ -26,6 +26,15 @@ spring:
 server:
   port: ${PORT:8080}
 
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
 app:
   jwt:
     secret: ${JWT_SECRET}
@@ -39,6 +48,34 @@ app:
     enabled: ${KAFKA_ENABLED:false}
   keycloak:
     enabled: ${KEYCLOAK_ENABLED:false}
+  billing:
+    stripe:
+      secret-key: ${STRIPE_SECRET_KEY:}
+      pro-price-id: ${STRIPE_PRO_PRICE_ID:}
+      enterprise-price-id: ${STRIPE_ENTERPRISE_PRICE_ID:}
+    frontend-url: ${CORS_ORIGINS:http://localhost:4200}
+
+storage:
+  type: ${STORAGE_TYPE:filesystem}
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://minio:9000}
+    access-key: ${MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    bucket: ${MINIO_BUCKET:springforge-generations}
+
+ai:
+  provider: ${AI_PROVIDER:claude}
+  claude:
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: ${AI_MODEL:claude-sonnet-4-20250514}
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    model: ${AI_MODEL:gpt-4o}
+
+notification:
+  email:
+    enabled: ${NOTIFICATION_EMAIL_ENABLED:false}
+    from: ${EMAIL_FROM:notifications@springforge.io}
 
 management:
   endpoints:
