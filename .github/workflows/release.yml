@@ -27,8 +27,10 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
+          cache-dependency-path: springforge-backend/pom.xml
 
       - name: Build JAR
+        working-directory: springforge-backend
         run: mvn -B package -DskipTests
 
       - name: Log in to Container Registry
