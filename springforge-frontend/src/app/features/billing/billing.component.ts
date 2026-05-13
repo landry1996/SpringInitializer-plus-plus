@@ -11,6 +11,15 @@ import { Subscription, Invoice } from './billing.model';
     <div class="billing-page">
       <h2>Billing & Subscription</h2>
 
+      <div class="trial-banner" *ngIf="subscription?.trial && subscription?.trialEndsAt">
+        <div class="trial-icon">&#9733;</div>
+        <div class="trial-text">
+          <strong>PRO Trial Active</strong>
+          <span>Your 14-day free trial ends on {{ subscription.trialEndsAt | date:'mediumDate' }}. Subscribe to keep PRO features.</span>
+        </div>
+        <button class="btn-trial-upgrade" (click)="checkout('PRO')">Subscribe Now</button>
+      </div>
+
       <div class="plans-section">
         <div class="plan-card" [class.active]="subscription?.plan === 'FREE'">
           <h3>Free</h3>
@@ -103,6 +112,13 @@ import { Subscription, Invoice } from './billing.model';
   `,
   styles: [`
     .billing-page { padding: 2rem; max-width: 1000px; margin: 0 auto; }
+    .trial-banner { display: flex; align-items: center; gap: 1rem; background: linear-gradient(135deg, #e3f2fd, #f3e5f5); border: 2px solid #1976d2; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; }
+    .trial-icon { font-size: 2rem; }
+    .trial-text { flex: 1; }
+    .trial-text strong { display: block; font-size: 1.1rem; color: #1565c0; }
+    .trial-text span { color: #555; font-size: 0.9rem; }
+    .btn-trial-upgrade { padding: 0.6rem 1.5rem; background: #1976d2; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; white-space: nowrap; }
+    .btn-trial-upgrade:hover { background: #1565c0; }
     .plans-section { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin: 2rem 0; }
     .plan-card { border: 2px solid #e0e0e0; border-radius: 12px; padding: 2rem; text-align: center; position: relative; transition: transform 0.2s, box-shadow 0.2s; }
     .plan-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }

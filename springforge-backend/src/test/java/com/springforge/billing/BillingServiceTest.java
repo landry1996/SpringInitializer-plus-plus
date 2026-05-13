@@ -47,14 +47,16 @@ class BillingServiceTest {
     }
 
     @Test
-    void getOrCreateSubscription_shouldCreateFreeWhenNotExists() {
+    void getOrCreateSubscription_shouldCreateProTrialWhenNotExists() {
         UUID userId = UUID.randomUUID();
         when(subscriptionRepository.findByUserId(userId)).thenReturn(Optional.empty());
         when(subscriptionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         Subscription result = billingService.getOrCreateSubscription(userId);
 
-        assertThat(result.getPlan()).isEqualTo(SubscriptionPlan.FREE);
+        assertThat(result.getPlan()).isEqualTo(SubscriptionPlan.PRO);
+        assertThat(result.isTrial()).isTrue();
+        assertThat(result.getTrialEndsAt()).isNotNull();
         verify(subscriptionRepository).save(any(Subscription.class));
     }
 

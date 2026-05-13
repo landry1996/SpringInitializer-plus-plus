@@ -6,6 +6,7 @@ export interface Subscription {
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   currentPeriodEnd: string | null;
+  trial: boolean;
   trialEndsAt: string | null;
   createdAt: string;
 }

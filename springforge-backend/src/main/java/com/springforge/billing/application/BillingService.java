@@ -12,10 +12,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -55,7 +57,7 @@ public class BillingService {
     public Subscription getOrCreateSubscription(UUID userId) {
         return subscriptionRepository.findByUserId(userId)
                 .orElseGet(() -> {
-                    Subscription sub = new Subscription(userId, SubscriptionPlan.FREE);
+                    Subscription sub = Subscription.createProTrial(userId);
                     return subscriptionRepository.save(sub);
                 });
     }
@@ -121,6 +123,7 @@ public class BillingService {
         subscription.setStripeCustomerId(stripeCustomerId);
         subscription.changePlan(plan);
         subscription.activate(stripeSubscriptionId, LocalDateTime.now(), LocalDateTime.now().plusMonths(1));
+        subscription.convertFromTrial();
         subscriptionRepository.save(subscription);
         log.info("Subscription activated for user {}: {}", userId, plan);
     }
@@ -157,5 +160,16 @@ public class BillingService {
     @Transactional(readOnly = true)
     public Page<Invoice> getInvoices(UUID userId, Pageable pageable) {
         return invoiceRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+    }
+
+    @Scheduled(cron = "0 0 * * * *")
+    @Transactional
+    public void expireTrials() {
+        List<Subscription> expired = subscriptionRepository.findByTrialTrueAndTrialEndsAtBefore(LocalDateTime.now());
+        for (Subscription sub : expired) {
+            sub.expireTrial();
+            subscriptionRepository.save(sub);
+            log.info("Trial expired for user {}, downgraded to FREE", sub.getUserId());
+        }
     }
 }

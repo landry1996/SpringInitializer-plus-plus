@@ -36,6 +36,12 @@ public class Subscription extends BaseEntity {
     @Column(name = "canceled_at")
     private LocalDateTime canceledAt;
 
+    @Column(name = "trial")
+    private boolean trial;
+
+    @Column(name = "trial_ends_at")
+    private LocalDateTime trialEndsAt;
+
     protected Subscription() {}
 
     public Subscription(UUID userId, SubscriptionPlan plan) {
@@ -44,6 +50,25 @@ public class Subscription extends BaseEntity {
         this.status = SubscriptionStatus.ACTIVE;
         this.currentPeriodStart = LocalDateTime.now();
         this.currentPeriodEnd = LocalDateTime.now().plusMonths(1);
+        this.trial = false;
+    }
+
+    public static Subscription createProTrial(UUID userId) {
+        Subscription sub = new Subscription(userId, SubscriptionPlan.PRO);
+        sub.trial = true;
+        sub.trialEndsAt = LocalDateTime.now().plusDays(14);
+        return sub;
+    }
+
+    public void expireTrial() {
+        this.trial = false;
+        this.trialEndsAt = null;
+        this.plan = SubscriptionPlan.FREE;
+    }
+
+    public void convertFromTrial() {
+        this.trial = false;
+        this.trialEndsAt = null;
     }
 
     public void activate(String stripeSubscriptionId, LocalDateTime periodStart, LocalDateTime periodEnd) {
@@ -75,4 +100,6 @@ public class Subscription extends BaseEntity {
     public LocalDateTime getCurrentPeriodStart() { return currentPeriodStart; }
     public LocalDateTime getCurrentPeriodEnd() { return currentPeriodEnd; }
     public LocalDateTime getCanceledAt() { return canceledAt; }
+    public boolean isTrial() { return trial; }
+    public LocalDateTime getTrialEndsAt() { return trialEndsAt; }
 }
