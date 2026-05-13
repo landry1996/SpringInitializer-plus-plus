@@ -1,0 +1,72 @@
+{
+  "name": "springforge",
+  "displayName": "SpringForge",
+  "description": "Generate Spring Boot projects with advanced architectures directly from VS Code",
+  "version": "0.1.0",
+  "publisher": "springforge",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "onCommand:springforge.generate"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "springforge.generate",
+        "title": "SpringForge: Generate Project"
+      },
+      {
+        "command": "springforge.configure",
+        "title": "SpringForge: Configure Settings"
+      }
+    ],
+    "configuration": {
+      "title": "SpringForge",
+      "properties": {
+        "springforge.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:8080",
+          "description": "SpringForge API server URL"
+        },
+        "springforge.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for authentication"
+        },
+        "springforge.language": {
+          "type": "string",
+          "default": "en",
+          "enum": ["en", "fr"],
+          "description": "Language for generated projects"
+        },
+        "springforge.outputDirectory": {
+          "type": "string",
+          "default": "",
+          "description": "Default output directory for generated projects"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0",
+    "@vscode/vsce": "^2.24.0",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.0"
+  }
+}
