@@ -16,5 +16,15 @@ export const routes: Routes = [
     loadComponent: () => import('./features/wizard/wizard.component').then(m => m.WizardComponent),
     canActivate: [authGuard]
   },
+  {
+    path: 'editor/new',
+    loadComponent: () => import('./features/template-editor/template-editor.component').then(m => m.TemplateEditorComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'editor/:id',
+    loadComponent: () => import('./features/template-editor/template-editor.component').then(m => m.TemplateEditorComponent),
+    canActivate: [authGuard]
+  },
   { path: '**', redirectTo: '/wizard' }
 ];
