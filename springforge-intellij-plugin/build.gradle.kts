@@ -25,6 +25,18 @@ tasks {
     patchPluginXml {
         sinceBuild.set("241")
         untilBuild.set("243.*")
+        changeNotes.set("""
+            <ul>
+                <li>Generate Spring Boot projects with hexagonal, DDD, and layered architectures</li>
+                <li>AI-powered recommendations and code generation</li>
+                <li>MySQL, PostgreSQL, MongoDB database support</li>
+                <li>Docker Compose auto-generation</li>
+            </ul>
+        """.trimIndent())
+    }
+
+    publishPlugin {
+        token.set(System.getenv("INTELLIJ_PUBLISH_TOKEN"))
     }
 
     withType<JavaCompile> {

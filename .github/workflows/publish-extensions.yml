@@ -1,0 +1,99 @@
+name: Publish Extensions
+
+on:
+  push:
+    tags:
+      - 'ext-v*'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Extension to publish'
+        required: true
+        type: choice
+        options:
+          - all
+          - vscode
+          - intellij
+
+jobs:
+  publish-vscode:
+    name: Publish VS Code Extension
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.target == 'all' || github.event.inputs.target == 'vscode'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: springforge-vscode/package-lock.json
+
+      - name: Install dependencies
+        working-directory: springforge-vscode
+        run: npm ci
+
+      - name: Compile extension
+        working-directory: springforge-vscode
+        run: npm run compile
+
+      - name: Package extension
+        working-directory: springforge-vscode
+        run: npx @vscode/vsce package
+
+      - name: Publish to VS Code Marketplace
+        working-directory: springforge-vscode
+        run: npx @vscode/vsce publish -p ${{ secrets.VSCE_PAT }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX Registry
+        working-directory: springforge-vscode
+        run: npx ovsx publish *.vsix -p ${{ secrets.OVSX_PAT }}
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: springforge-vscode-${{ github.ref_name }}
+          path: springforge-vscode/*.vsix
+
+  publish-intellij:
+    name: Publish IntelliJ Plugin
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.target == 'all' || github.event.inputs.target == 'intellij'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build plugin
+        working-directory: springforge-intellij-plugin
+        run: ./gradlew buildPlugin
+
+      - name: Verify plugin
+        working-directory: springforge-intellij-plugin
+        run: ./gradlew verifyPlugin
+
+      - name: Publish to JetBrains Marketplace
+        working-directory: springforge-intellij-plugin
+        run: ./gradlew publishPlugin
+        env:
+          INTELLIJ_PUBLISH_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
+
+      - name: Upload plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: springforge-intellij-${{ github.ref_name }}
+          path: springforge-intellij-plugin/build/distributions/*.zip
