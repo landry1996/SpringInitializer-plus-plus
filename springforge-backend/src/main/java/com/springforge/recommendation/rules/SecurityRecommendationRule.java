@@ -19,9 +19,9 @@ public class SecurityRecommendationRule implements RecommendationRule {
         List<Recommendation> recommendations = new ArrayList<>();
 
         boolean hasWebDep = config.dependencies() != null && config.dependencies().stream()
-            .anyMatch(d -> d.artifactId().contains("web") || d.artifactId().contains("webflux"));
+            .anyMatch(d -> d.contains("web") || d.contains("webflux"));
 
-        if (hasWebDep && (config.security() == null || !config.security().enabled())) {
+        if (hasWebDep && (config.security() == null || config.security().type() == null)) {
             recommendations.add(new Recommendation(
                 "sec-no-security",
                 RecommendationType.SECURITY_ADVISORY,
@@ -34,9 +34,9 @@ public class SecurityRecommendationRule implements RecommendationRule {
             ));
         }
 
-        if (config.security() != null && config.security().enabled()) {
+        if (config.security() != null && config.security().type() != null) {
             Set<String> artifacts = config.dependencies() != null
-                ? config.dependencies().stream().map(d -> d.artifactId()).collect(Collectors.toSet())
+                ? config.dependencies().stream().map(d -> d).collect(Collectors.toSet())
                 : Set.of();
 
             if (!artifacts.contains("spring-boot-starter-oauth2-resource-server") &&
@@ -69,7 +69,7 @@ public class SecurityRecommendationRule implements RecommendationRule {
 
         if (hasWebDep) {
             Set<String> artifacts = config.dependencies() != null
-                ? config.dependencies().stream().map(d -> d.artifactId()).collect(Collectors.toSet())
+                ? config.dependencies().stream().map(d -> d).collect(Collectors.toSet())
                 : Set.of();
 
             if (!artifacts.contains("bucket4j-spring-boot-starter")) {

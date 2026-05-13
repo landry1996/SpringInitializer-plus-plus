@@ -27,7 +27,7 @@ public class AntiPatternRule implements RecommendationRule {
         if (config.dependencies() == null) return recommendations;
 
         Set<String> artifacts = config.dependencies().stream()
-            .map(d -> d.artifactId())
+            .map(d -> d)
             .collect(Collectors.toSet());
 
         for (Set<String> incompatible : INCOMPATIBLE_GROUPS) {

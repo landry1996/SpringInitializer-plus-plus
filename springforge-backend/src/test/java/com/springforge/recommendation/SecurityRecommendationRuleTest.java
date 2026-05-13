@@ -1,5 +1,6 @@
 package com.springforge.recommendation;
 
+import com.springforge.generator.domain.BuildTool;
 import com.springforge.generator.domain.ProjectConfiguration;
 import com.springforge.recommendation.rules.SecurityRecommendationRule;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,9 +27,9 @@ class SecurityRecommendationRuleTest {
     @Test
     void shouldWarnWebAppWithoutSecurity() {
         ProjectConfiguration config = new ProjectConfiguration(
-            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", "MAVEN"),
-            new ProjectConfiguration.Architecture("LAYERED", List.of()),
-            List.of(new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-web", null, null)),
+            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
+            List.of("spring-boot-starter-web"),
             null, null, null, null, null, null, null
         );
 
@@ -42,12 +43,11 @@ class SecurityRecommendationRuleTest {
     @Test
     void shouldSuggestRateLimitingForWebApps() {
         ProjectConfiguration config = new ProjectConfiguration(
-            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", "MAVEN"),
-            new ProjectConfiguration.Architecture("LAYERED", List.of()),
-            List.of(new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-web", null, null)),
-            null, null, null, null,
-            new ProjectConfiguration.SecurityConfig(true, "OAUTH2", "keycloak"),
-            null, null
+            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
+            List.of("spring-boot-starter-web"),
+            new ProjectConfiguration.SecurityConfig("OAUTH2", List.of("USER", "ADMIN")),
+            null, null, null, null, null, null
         );
 
         List<Recommendation> recommendations = rule.evaluate(config);
@@ -58,9 +58,9 @@ class SecurityRecommendationRuleTest {
     @Test
     void shouldNotWarnWhenNoWebDependency() {
         ProjectConfiguration config = new ProjectConfiguration(
-            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", "MAVEN"),
-            new ProjectConfiguration.Architecture("LAYERED", List.of()),
-            List.of(new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-batch", null, null)),
+            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
+            List.of("spring-boot-starter-batch"),
             null, null, null, null, null, null, null
         );
 

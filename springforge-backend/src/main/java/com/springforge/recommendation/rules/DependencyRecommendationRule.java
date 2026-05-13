@@ -45,11 +45,11 @@ public class DependencyRecommendationRule implements RecommendationRule {
         if (config.dependencies() == null) return recommendations;
 
         Set<String> existingArtifacts = config.dependencies().stream()
-            .map(d -> d.artifactId())
+            .map(d -> d)
             .collect(Collectors.toSet());
 
         for (var dep : config.dependencies()) {
-            String key = dep.artifactId();
+            String key = dep;
             if (COMPLEMENTARY_DEPS.containsKey(key)) {
                 for (SuggestionEntry suggestion : COMPLEMENTARY_DEPS.get(key)) {
                     String suggestedArtifact = suggestion.coordinate().split(":")[1];

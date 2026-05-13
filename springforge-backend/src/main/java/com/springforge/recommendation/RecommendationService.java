@@ -52,7 +52,7 @@ public class RecommendationService {
             totalDeductions += categoryDeduction;
         }
 
-        if (config.security() != null && config.security().enabled()) {
+        if (config.security() != null && config.security().type() != null) {
             strengths.add("Security configured");
         }
         if (config.observability() != null && config.observability().enabled()) {

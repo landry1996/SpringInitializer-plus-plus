@@ -1,5 +1,6 @@
 package com.springforge.recommendation;
 
+import com.springforge.generator.domain.BuildTool;
 import com.springforge.generator.domain.ProjectConfiguration;
 import com.springforge.recommendation.rules.AntiPatternRule;
 import com.springforge.recommendation.rules.ArchitectureRecommendationRule;
@@ -65,8 +66,8 @@ class RecommendationServiceTest {
 
     private ProjectConfiguration createMinimalConfig() {
         return new ProjectConfiguration(
-            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", "MAVEN"),
-            new ProjectConfiguration.Architecture("LAYERED", List.of()),
+            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
             List.of(),
             null, null, null, null, null, null, null
         );
@@ -74,30 +75,24 @@ class RecommendationServiceTest {
 
     private ProjectConfiguration createConfigWithWebAndJpa() {
         return new ProjectConfiguration(
-            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", "MAVEN"),
-            new ProjectConfiguration.Architecture("LAYERED", List.of()),
-            List.of(
-                new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-web", null, null),
-                new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-data-jpa", null, null)
-            ),
+            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
+            List.of("spring-boot-starter-web", "spring-boot-starter-data-jpa"),
             null, null, null, null, null, null, null
         );
     }
 
     private ProjectConfiguration createFullConfig() {
         return new ProjectConfiguration(
-            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", "MAVEN"),
-            new ProjectConfiguration.Architecture("HEXAGONAL", List.of("user", "order")),
-            List.of(
-                new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-web", null, null)
-            ),
+            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
+            new ProjectConfiguration.Architecture("HEXAGONAL", List.of("user", "order"), false, false),
+            List.of("spring-boot-starter-web"),
+            new ProjectConfiguration.SecurityConfig("OAUTH2", List.of("USER", "ADMIN")),
+            new ProjectConfiguration.InfrastructureConfig(true, true, true, true, "github-actions"),
             null,
             new ProjectConfiguration.ObservabilityConfig(true, true, true, true),
             new ProjectConfiguration.TestingConfig(true, true, true, true),
-            null,
-            new ProjectConfiguration.SecurityConfig(true, "OAUTH2", "keycloak"),
-            null,
-            new ProjectConfiguration.InfrastructureConfig(true, true, true)
+            null, null
         );
     }
 }

@@ -1,5 +1,6 @@
 package com.springforge.recommendation;
 
+import com.springforge.generator.domain.BuildTool;
 import com.springforge.generator.domain.ProjectConfiguration;
 import com.springforge.recommendation.rules.DependencyRecommendationRule;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +27,7 @@ class DependencyRecommendationRuleTest {
     @Test
     void shouldSuggestFlywayForJpa() {
         ProjectConfiguration config = configWith(List.of(
-            new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-data-jpa", null, null)
+            "spring-boot-starter-data-jpa"
         ));
 
         List<Recommendation> recommendations = rule.evaluate(config);
@@ -38,7 +39,7 @@ class DependencyRecommendationRuleTest {
     @Test
     void shouldSuggestOpenApiForWeb() {
         ProjectConfiguration config = configWith(List.of(
-            new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-web", null, null)
+            "spring-boot-starter-web"
         ));
 
         List<Recommendation> recommendations = rule.evaluate(config);
@@ -50,8 +51,8 @@ class DependencyRecommendationRuleTest {
     @Test
     void shouldNotSuggestAlreadyPresentDependency() {
         ProjectConfiguration config = configWith(List.of(
-            new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-data-jpa", null, null),
-            new ProjectConfiguration.Dependency("org.flywaydb", "flyway-core", null, null)
+            "spring-boot-starter-data-jpa",
+            "flyway-core"
         ));
 
         List<Recommendation> recommendations = rule.evaluate(config);
@@ -62,8 +63,8 @@ class DependencyRecommendationRuleTest {
     @Test
     void shouldReturnEmptyForNullDependencies() {
         ProjectConfiguration config = new ProjectConfiguration(
-            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", "MAVEN"),
-            new ProjectConfiguration.Architecture("LAYERED", List.of()),
+            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
             null, null, null, null, null, null, null, null
         );
 
@@ -71,10 +72,10 @@ class DependencyRecommendationRuleTest {
         assertThat(recommendations).isEmpty();
     }
 
-    private ProjectConfiguration configWith(List<ProjectConfiguration.Dependency> deps) {
+    private ProjectConfiguration configWith(List<String> deps) {
         return new ProjectConfiguration(
-            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", "MAVEN"),
-            new ProjectConfiguration.Architecture("LAYERED", List.of()),
+            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
             deps, null, null, null, null, null, null, null
         );
     }

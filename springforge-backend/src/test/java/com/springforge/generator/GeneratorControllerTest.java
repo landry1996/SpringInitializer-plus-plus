@@ -43,7 +43,7 @@ class GeneratorControllerTest {
                         "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
                 new ProjectConfiguration.Architecture("HEXAGONAL", List.of("user", "order"), false, false),
                 List.of("spring-boot-starter-web"),
-                null, null, null
+                null, null, null, null, null, null, null
         );
 
         mockMvc.perform(post("/api/v1/projects/generate")
@@ -60,7 +60,7 @@ class GeneratorControllerTest {
         var config = new ProjectConfiguration(
                 new ProjectConfiguration.Metadata("com.example", "demo", "Demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
                 new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
-                List.of(), null, null, null
+                List.of(), null, null, null, null, null, null, null
         );
 
         mockMvc.perform(post("/api/v1/projects/generate")

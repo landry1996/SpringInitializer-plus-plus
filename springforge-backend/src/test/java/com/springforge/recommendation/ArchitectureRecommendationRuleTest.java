@@ -1,5 +1,6 @@
 package com.springforge.recommendation;
 
+import com.springforge.generator.domain.BuildTool;
 import com.springforge.generator.domain.ProjectConfiguration;
 import com.springforge.recommendation.rules.ArchitectureRecommendationRule;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,7 +62,7 @@ class ArchitectureRecommendationRuleTest {
     @Test
     void shouldReturnEmptyForNullArchitecture() {
         ProjectConfiguration config = new ProjectConfiguration(
-            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", "MAVEN"),
+            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
             null, List.of(), null, null, null, null, null, null, null
         );
 
@@ -71,8 +72,8 @@ class ArchitectureRecommendationRuleTest {
 
     private ProjectConfiguration configWithArch(String archType) {
         return new ProjectConfiguration(
-            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", "MAVEN"),
-            new ProjectConfiguration.Architecture(archType, List.of()),
+            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
+            new ProjectConfiguration.Architecture(archType, List.of(), false, false),
             List.of(), null, null, null, null, null, null, null
         );
     }

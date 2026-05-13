@@ -29,7 +29,7 @@ class GenerationPipelineTest {
     void validateStep_withMissingGroupId_fails() {
         var meta = new ProjectConfiguration.Metadata(
                 "", "my-app", "My App", "desc", "com.example.myapp", "21", "3.3.5", BuildTool.MAVEN);
-        var config = new ProjectConfiguration(meta, architecture(), List.of(), null, null, null);
+        var config = new ProjectConfiguration(meta, architecture(), List.of(), null, null, null, null, null, null, null);
         var context = new GenerationContext(config);
         var validateStep = new ValidateStep();
 
@@ -43,7 +43,7 @@ class GenerationPipelineTest {
     void validateStep_withUnsupportedJavaVersion_fails() {
         var meta = new ProjectConfiguration.Metadata(
                 "com.example", "my-app", "My App", "desc", "com.example.myapp", "8", "3.3.5", BuildTool.MAVEN);
-        var config = new ProjectConfiguration(meta, architecture(), List.of(), null, null, null);
+        var config = new ProjectConfiguration(meta, architecture(), List.of(), null, null, null, null, null, null, null);
         var context = new GenerationContext(config);
         var validateStep = new ValidateStep();
 
@@ -72,7 +72,7 @@ class GenerationPipelineTest {
     @Test
     void resolveStep_addsSecurityDepsForJwt() {
         var security = new ProjectConfiguration.SecurityConfig("JWT", List.of("ADMIN", "USER"));
-        var config = new ProjectConfiguration(metadata(), architecture(), List.of("spring-boot-starter-web"), security, null, null);
+        var config = new ProjectConfiguration(metadata(), architecture(), List.of("spring-boot-starter-web"), security, null, null, null, null, null, null);
         var context = new GenerationContext(config);
         var resolveStep = new ResolveStep();
 
@@ -98,7 +98,7 @@ class GenerationPipelineTest {
 
     private ProjectConfiguration validConfiguration() {
         return new ProjectConfiguration(metadata(), architecture(),
-                List.of("spring-boot-starter-web", "spring-boot-starter-data-jpa"), null, null, null);
+                List.of("spring-boot-starter-web", "spring-boot-starter-data-jpa"), null, null, null, null, null, null, null);
     }
 
     private ProjectConfiguration.Metadata metadata() {

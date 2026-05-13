@@ -2,7 +2,7 @@ package com.springforge.preset.application;
 
 import com.springforge.preset.domain.Preset;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record PresetResponse(
@@ -12,7 +12,7 @@ public record PresetResponse(
     String configuration,
     UUID ownerId,
     boolean shared,
-    Instant createdAt
+    LocalDateTime createdAt
 ) {
     public static PresetResponse from(Preset preset) {
         return new PresetResponse(

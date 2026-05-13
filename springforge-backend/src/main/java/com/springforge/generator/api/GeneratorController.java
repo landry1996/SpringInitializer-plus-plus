@@ -55,7 +55,7 @@ public class GeneratorController {
         GenerationContext context = new GenerationContext(request.configuration());
         StepResult result = validateStep.execute(context);
         if (result.success()) {
-            return ResponseEntity.ok(ValidationResult.valid());
+            return ResponseEntity.ok(ValidationResult.success());
         }
         return ResponseEntity.badRequest().body(ValidationResult.invalid(result.errors()));
     }

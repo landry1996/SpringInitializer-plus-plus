@@ -1,5 +1,6 @@
 package com.springforge.recommendation;
 
+import com.springforge.generator.domain.BuildTool;
 import com.springforge.generator.domain.ProjectConfiguration;
 import com.springforge.recommendation.rules.AntiPatternRule;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,8 +27,8 @@ class AntiPatternRuleTest {
     @Test
     void shouldDetectJpaAndMybatisConflict() {
         ProjectConfiguration config = configWith(List.of(
-            new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-data-jpa", null, null),
-            new ProjectConfiguration.Dependency("org.mybatis.spring.boot", "mybatis-spring-boot-starter", null, null)
+            "spring-boot-starter-data-jpa",
+            "mybatis-spring-boot-starter"
         ));
 
         List<Recommendation> recommendations = rule.evaluate(config);
@@ -40,8 +41,8 @@ class AntiPatternRuleTest {
     @Test
     void shouldDetectReactiveAndBlockingConflict() {
         ProjectConfiguration config = configWith(List.of(
-            new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-web", null, null),
-            new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-webflux", null, null)
+            "spring-boot-starter-web",
+            "spring-boot-starter-webflux"
         ));
 
         List<Recommendation> recommendations = rule.evaluate(config);
@@ -52,7 +53,7 @@ class AntiPatternRuleTest {
     @Test
     void shouldSuggestValidationForWebWithoutIt() {
         ProjectConfiguration config = configWith(List.of(
-            new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-web", null, null)
+            "spring-boot-starter-web"
         ));
 
         List<Recommendation> recommendations = rule.evaluate(config);
@@ -65,12 +66,12 @@ class AntiPatternRuleTest {
     @Test
     void shouldWarnTestingEnabledWithoutTestDeps() {
         ProjectConfiguration config = new ProjectConfiguration(
-            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", "MAVEN"),
-            new ProjectConfiguration.Architecture("LAYERED", List.of()),
-            List.of(new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-web", null, null)),
-            null, null,
+            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
+            List.of("spring-boot-starter-web"),
+            null, null, null, null,
             new ProjectConfiguration.TestingConfig(true, true, false, false),
-            null, null, null, null
+            null, null
         );
 
         List<Recommendation> recommendations = rule.evaluate(config);
@@ -81,8 +82,8 @@ class AntiPatternRuleTest {
     @Test
     void shouldReturnEmptyForCompatibleDeps() {
         ProjectConfiguration config = configWith(List.of(
-            new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-web", null, null),
-            new ProjectConfiguration.Dependency("org.springframework.boot", "spring-boot-starter-validation", null, null)
+            "spring-boot-starter-web",
+            "spring-boot-starter-validation"
         ));
 
         List<Recommendation> recommendations = rule.evaluate(config);
@@ -90,10 +91,10 @@ class AntiPatternRuleTest {
         assertThat(recommendations).noneMatch(r -> r.type() == RecommendationType.ANTI_PATTERN_WARNING);
     }
 
-    private ProjectConfiguration configWith(List<ProjectConfiguration.Dependency> deps) {
+    private ProjectConfiguration configWith(List<String> deps) {
         return new ProjectConfiguration(
-            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", "MAVEN"),
-            new ProjectConfiguration.Architecture("LAYERED", List.of()),
+            new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
             deps, null, null, null, null, null, null, null
         );
     }

@@ -4,7 +4,7 @@ import java.util.List;
 
 public record ValidationResult(boolean valid, List<String> errors) {
 
-    public static ValidationResult valid() {
+    public static ValidationResult success() {
         return new ValidationResult(true, List.of());
     }
 
