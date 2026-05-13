@@ -73,6 +73,10 @@ public class GenerateStep implements PipelineStep {
                 generateKafkaConfig(projectDir, model, config);
             }
 
+            if (hasMongoDB(config)) {
+                generateMongoDbConfig(projectDir, model, config);
+            }
+
             if (config.observability() != null && config.observability().enabled()) {
                 generateObservability(projectDir, model);
             }
@@ -156,6 +160,9 @@ public class GenerateStep implements PipelineStep {
             } else if (dep.startsWith("jjwt-")) {
                 depModel.put("groupId", "io.jsonwebtoken");
                 depModel.put("artifactId", dep);
+            } else if (dep.startsWith("mongock-")) {
+                depModel.put("groupId", "io.mongock");
+                depModel.put("artifactId", dep);
             } else {
                 depModel.put("groupId", "org.springframework.boot");
                 depModel.put("artifactId", "spring-boot-starter-" + dep);
@@ -201,7 +208,9 @@ public class GenerateStep implements PipelineStep {
         Files.createDirectories(resourcesDir);
 
         Map<String, Object> ymlModel = new HashMap<>(model);
-        if (config.dependencies() != null && config.dependencies().stream()
+        if (hasMongoDB(config)) {
+            ymlModel.put("mongodb", true);
+        } else if (config.dependencies() != null && config.dependencies().stream()
                 .anyMatch(d -> d.contains("data-jpa") || d.contains("jdbc"))) {
             Map<String, Object> database = new HashMap<>();
             database.put("type", "postgresql");
@@ -211,6 +220,11 @@ public class GenerateStep implements PipelineStep {
 
         String content = renderTemplate("core/common/application.yml.ftl", ymlModel);
         Files.writeString(resourcesDir.resolve("application.yml"), content);
+    }
+
+    private boolean hasMongoDB(ProjectConfiguration config) {
+        return config.dependencies() != null && config.dependencies().stream()
+                .anyMatch(d -> d.contains("data-mongodb"));
     }
 
     private void generateDockerfile(Path projectDir, Map<String, Object> model) throws Exception {
@@ -226,16 +240,31 @@ public class GenerateStep implements PipelineStep {
     private void generateDockerCompose(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
         Map<String, Object> composeModel = new HashMap<>(model);
         Map<String, Object> database = new HashMap<>();
-        database.put("serviceName", "postgres");
-        database.put("image", "postgres:16-alpine");
-        database.put("port", "5432");
-        database.put("volumePath", "postgresql/data");
-        database.put("healthCheck", "[\"CMD-SHELL\", \"pg_isready\"]");
-        Map<String, String> envVars = new HashMap<>();
-        envVars.put("POSTGRES_DB", config.metadata().artifactId());
-        envVars.put("POSTGRES_USER", config.metadata().artifactId());
-        envVars.put("POSTGRES_PASSWORD", config.metadata().artifactId());
-        database.put("envVars", envVars);
+
+        if (hasMongoDB(config)) {
+            database.put("serviceName", "mongodb");
+            database.put("image", "mongo:7");
+            database.put("port", "27017");
+            database.put("volumePath", "mongodb/data/db");
+            database.put("healthCheck", "[\"CMD\", \"mongosh\", \"--eval\", \"db.adminCommand('ping')\"]");
+            Map<String, String> envVars = new HashMap<>();
+            envVars.put("MONGO_INITDB_ROOT_USERNAME", config.metadata().artifactId());
+            envVars.put("MONGO_INITDB_ROOT_PASSWORD", config.metadata().artifactId());
+            envVars.put("MONGO_INITDB_DATABASE", config.metadata().artifactId());
+            database.put("envVars", envVars);
+        } else {
+            database.put("serviceName", "postgres");
+            database.put("image", "postgres:16-alpine");
+            database.put("port", "5432");
+            database.put("volumePath", "postgresql/data");
+            database.put("healthCheck", "[\"CMD-SHELL\", \"pg_isready\"]");
+            Map<String, String> envVars = new HashMap<>();
+            envVars.put("POSTGRES_DB", config.metadata().artifactId());
+            envVars.put("POSTGRES_USER", config.metadata().artifactId());
+            envVars.put("POSTGRES_PASSWORD", config.metadata().artifactId());
+            database.put("envVars", envVars);
+        }
+
         composeModel.put("database", database);
 
         String content = renderTemplate("core/common/docker-compose.yml.ftl", composeModel);
@@ -274,6 +303,9 @@ public class GenerateStep implements PipelineStep {
             Map<String, Object> moduleModel = new HashMap<>(model);
             moduleModel.put("moduleName", module);
             moduleModel.put("entityName", entityName);
+            if (hasMongoDB(config)) {
+                moduleModel.put("mongodb", true);
+            }
 
             if ("HEXAGONAL".equalsIgnoreCase(archType)) {
                 generateHexagonalModule(srcDir, module, moduleModel);
@@ -296,6 +328,7 @@ public class GenerateStep implements PipelineStep {
 
     private void generateHexagonalModule(Path srcDir, String module, Map<String, Object> model) throws Exception {
         String entityName = (String) model.get("entityName");
+        boolean useMongo = model.containsKey("mongodb") && Boolean.TRUE.equals(model.get("mongodb"));
         Path domainDir = srcDir.resolve(module + "/domain");
         Path appDir = srcDir.resolve(module + "/application");
         Path infraDir = srcDir.resolve(module + "/infrastructure");
@@ -305,16 +338,26 @@ public class GenerateStep implements PipelineStep {
         Files.createDirectories(infraDir);
         Files.createDirectories(apiDir);
 
-        Files.writeString(domainDir.resolve(entityName + ".java"),
-                renderTemplate("core/hexagonal/DomainEntity.java.ftl", model));
+        if (useMongo) {
+            Files.writeString(domainDir.resolve(entityName + ".java"),
+                    renderTemplate("core/mongodb/MongoDocument.java.ftl", model));
+        } else {
+            Files.writeString(domainDir.resolve(entityName + ".java"),
+                    renderTemplate("core/hexagonal/DomainEntity.java.ftl", model));
+        }
         Files.writeString(domainDir.resolve(entityName + "Repository.java"),
                 renderTemplate("core/hexagonal/Repository.java.ftl", model));
         Files.writeString(appDir.resolve(entityName + "UseCase.java"),
                 renderTemplate("core/hexagonal/UseCase.java.ftl", model));
         Files.writeString(appDir.resolve(entityName + "UseCaseImpl.java"),
                 renderTemplate("core/hexagonal/UseCaseImpl.java.ftl", model));
-        Files.writeString(infraDir.resolve(entityName + "JpaAdapter.java"),
-                renderTemplate("core/hexagonal/JpaAdapter.java.ftl", model));
+        if (useMongo) {
+            Files.writeString(infraDir.resolve(entityName + "MongoAdapter.java"),
+                    renderTemplate("core/mongodb/MongoRepository.java.ftl", model));
+        } else {
+            Files.writeString(infraDir.resolve(entityName + "JpaAdapter.java"),
+                    renderTemplate("core/hexagonal/JpaAdapter.java.ftl", model));
+        }
         Files.writeString(apiDir.resolve(entityName + "Controller.java"),
                 renderTemplate("core/hexagonal/Controller.java.ftl", model));
         Files.writeString(appDir.resolve(entityName + "Mapper.java"),
@@ -527,6 +570,21 @@ public class GenerateStep implements PipelineStep {
                 renderTemplate("core/kafka/outbox-migration.sql.ftl", kafkaModel));
     }
 
+    private void generateMongoDbConfig(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
+        String packageName = (String) model.get("packageName");
+        Path configDir = projectDir.resolve("src/main/java/" + packageName.replace(".", "/") + "/config");
+        Path migrationDir = projectDir.resolve("src/main/java/" + packageName.replace(".", "/") + "/migration");
+        Files.createDirectories(configDir);
+        Files.createDirectories(migrationDir);
+
+        Files.writeString(configDir.resolve("MongoConfig.java"),
+                renderTemplate("core/mongodb/MongoConfig.java.ftl", model));
+        Files.writeString(configDir.resolve("MongockConfig.java"),
+                renderTemplate("core/mongodb/MongockConfig.java.ftl", model));
+        Files.writeString(migrationDir.resolve("InitialMigration.java"),
+                renderTemplate("core/mongodb/InitialMigration.java.ftl", model));
+    }
+
     private void generateObservability(Path projectDir, Map<String, Object> model) throws Exception {
         String packageName = (String) model.get("packageName");
         Path obsDir = projectDir.resolve("src/main/java/" + packageName.replace(".", "/") + "/config/observability");
@@ -558,6 +616,9 @@ public class GenerateStep implements PipelineStep {
         }
         if (config.messaging() != null && "KAFKA".equalsIgnoreCase(config.messaging().type())) {
             testModel.put("kafka", true);
+        }
+        if (hasMongoDB(config)) {
+            testModel.put("mongodb", true);
         }
 
         Files.writeString(testDir.resolve(model.get("applicationClassName") + "Test.java"),
@@ -638,6 +699,9 @@ public class GenerateStep implements PipelineStep {
         }
         if (config.dependencies() != null && config.dependencies().stream().anyMatch(d -> d.contains("redis"))) {
             profileModel.put("cacheType", "REDIS");
+        }
+        if (hasMongoDB(config)) {
+            profileModel.put("mongodb", true);
         }
 
         Files.writeString(resourcesDir.resolve("application-dev.yml"),

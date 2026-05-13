@@ -3,7 +3,11 @@ package ${packageName}.config;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
+<#if mongodb?? && mongodb>
+import org.testcontainers.containers.MongoDBContainer;
+<#else>
 import org.testcontainers.containers.PostgreSQLContainer;
+</#if>
 <#if kafka?? && kafka>
 import org.testcontainers.kafka.KafkaContainer;
 </#if>
@@ -16,12 +20,20 @@ import org.springframework.test.context.DynamicPropertySource;
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfig {
 
+<#if mongodb?? && mongodb>
+    @Bean
+    @ServiceConnection
+    public MongoDBContainer mongoContainer() {
+        return new MongoDBContainer("mongo:7");
+    }
+<#else>
     @Bean
     @ServiceConnection
     public PostgreSQLContainer<?> postgresContainer() {
         return new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("${artifactId}_test");
     }
+</#if>
 <#if kafka?? && kafka>
 
     @Bean

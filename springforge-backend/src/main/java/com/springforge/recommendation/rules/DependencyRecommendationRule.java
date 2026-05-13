@@ -20,6 +20,10 @@ public class DependencyRecommendationRule implements RecommendationRule {
             new SuggestionEntry("org.flywaydb:flyway-core", "Flyway for database migrations", 4, 0.9),
             new SuggestionEntry("org.liquibase:liquibase-core", "Liquibase for database migrations", 3, 0.7)
         ),
+        "spring-boot-starter-data-mongodb", List.of(
+            new SuggestionEntry("io.mongock:mongock-springboot-v3", "Mongock for MongoDB schema migrations", 4, 0.9),
+            new SuggestionEntry("de.flapdoodle.embed:de.flapdoodle.embed.mongo.spring3x", "Embedded MongoDB for testing", 3, 0.8)
+        ),
         "spring-boot-starter-web", List.of(
             new SuggestionEntry("org.springdoc:springdoc-openapi-starter-webmvc-ui", "OpenAPI/Swagger documentation", 4, 0.85),
             new SuggestionEntry("org.springframework.boot:spring-boot-starter-validation", "Bean validation for request DTOs", 3, 0.8)

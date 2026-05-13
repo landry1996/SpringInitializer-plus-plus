@@ -1,4 +1,10 @@
 spring:
+<#if mongodb?? && mongodb>
+  data:
+    mongodb:
+      uri: ${'$'}{MONGODB_URI}
+      auto-index-creation: false
+<#else>
   datasource:
     url: ${'$'}{DATABASE_URL}
     username: ${'$'}{DATABASE_USERNAME}
@@ -16,6 +22,7 @@ spring:
         generate_statistics: false
   flyway:
     enabled: true
+</#if>
 <#if cacheType?? && cacheType == "REDIS">
   data:
     redis:

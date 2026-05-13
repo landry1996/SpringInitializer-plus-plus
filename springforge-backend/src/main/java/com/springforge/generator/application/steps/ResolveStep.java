@@ -32,6 +32,12 @@ public class ResolveStep implements PipelineStep {
             }
         }
 
+        if (resolvedDependencies.contains("spring-boot-starter-data-mongodb")) {
+            if (!resolvedDependencies.contains("spring-boot-starter-validation")) {
+                resolvedDependencies.add("spring-boot-starter-validation");
+            }
+        }
+
         if (config.security() != null && "JWT".equals(config.security().type())) {
             resolvedDependencies.add("spring-boot-starter-security");
             resolvedDependencies.add("jjwt-api");

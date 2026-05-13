@@ -59,6 +59,11 @@ public class DependencyConflictDetector {
             suggestions.add("Consider adding a database driver (postgresql, mysql-connector-j, or h2)");
         }
 
+        if (dependencies.contains("spring-boot-starter-data-mongodb") &&
+            !dependencies.contains("mongock-springboot-v3")) {
+            suggestions.add("Consider adding 'mongock-springboot-v3' for MongoDB schema migrations");
+        }
+
         if (dependencies.contains("spring-boot-starter-web") &&
             !dependencies.contains("spring-boot-starter-validation")) {
             suggestions.add("Consider adding 'spring-boot-starter-validation' for request validation");
