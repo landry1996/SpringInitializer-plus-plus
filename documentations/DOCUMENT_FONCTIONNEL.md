@@ -286,7 +286,9 @@ Gestion complète de la facturation :
 | Portail client | Gestion abonnement, méthode de paiement |
 | Factures | Historique complet des paiements |
 | Webhooks Stripe | Mise à jour automatique du plan en temps réel |
-| Période d'essai | 14 jours PRO offerts aux nouveaux utilisateurs |
+| Période d'essai | 14 jours PRO offerts automatiquement aux nouveaux utilisateurs |
+| Expiration trial | Scheduler horaire downgrade vers FREE si trial expiré |
+| Conversion | Le flag trial est retiré lors du paiement Stripe réussi |
 
 ### 2.14 Webhooks & Notifications
 
@@ -314,6 +316,51 @@ Option de base de données MongoDB dans le wizard de génération :
 | Docker Compose | Service MongoDB 7 avec healthcheck |
 | Tests | Testcontainers MongoDB + embedded-mongo |
 | Dépendances auto | Résolution automatique des libs complémentaires |
+
+### 2.16 Support MySQL (Générateur)
+
+Option de base de données MySQL dans le wizard de génération :
+
+| Fonctionnalité | Description |
+|---------------|-------------|
+| Wizard step DB | Choix entre PostgreSQL, MongoDB et MySQL |
+| Templates | `application-mysql.yml.ftl` (datasource, dialect MySQL, Flyway) |
+| Docker Compose | Service MySQL 8.0 avec healthcheck (`mysqladmin ping`) |
+| Configuration | Port 3306, driver `com.mysql.cj.jdbc.Driver`, dialect `MySQLDialect` |
+| Flyway | Migrations SQL compatibles MySQL |
+| Détection | Automatique par présence de `mysql-connector-j` dans les dépendances |
+
+### 2.17 Support Gradle (Générateur)
+
+Support des build tools Gradle en plus de Maven :
+
+| Fonctionnalité | Description |
+|---------------|-------------|
+| Wizard step Build | Choix entre Maven, Gradle Groovy, Gradle Kotlin DSL |
+| Templates | `build.gradle.ftl`, `build.gradle.kts.ftl`, `settings.gradle.kts.ftl` |
+| Wrapper | Fichiers `gradlew` et `gradlew.bat` générés |
+| Dépendances | Format Gradle (`implementation`, `testImplementation`) |
+| Plugins | Spring Boot, Dependency Management, Java/Kotlin |
+
+### 2.18 Frontend Pages P6 (Billing, Webhooks, Chat IA)
+
+Pages Angular standalone ajoutées pour les fonctionnalités P6 :
+
+| Page | Route | Description |
+|------|-------|-------------|
+| Billing | `/settings/billing` | Plans (FREE/PRO/ENTERPRISE), checkout Stripe, portail, factures, bannière trial |
+| Webhooks | `/settings/webhooks` | Liste, CRUD, formulaire création, test, toggle actif, historique envois |
+| AI Chat | `/ai/chat` | Chat streaming SSE, suggestions, messages temps réel, input Enter |
+
+### 2.19 Publication Extensions (Marketplace)
+
+Automatisation de la publication des extensions IDE :
+
+| Marketplace | Extension | Méthode |
+|-------------|-----------|---------|
+| VS Code Marketplace | springforge-vscode | `vsce publish` via GitHub Actions |
+| Open VSX Registry | springforge-vscode | `ovsx publish` (compatible Codium/Gitpod) |
+| JetBrains Marketplace | springforge-intellij-plugin | `gradlew publishPlugin` via GitHub Actions |
 
 ---
 
@@ -431,6 +478,9 @@ Option de base de données MongoDB dans le wizard de génération :
 | RG-BIL-03 | Un impayé (`invoice.payment_failed`) passe le statut en PAST_DUE |
 | RG-BIL-04 | Une annulation (`customer.subscription.deleted`) passe en CANCELED, le plan FREE est réactivé |
 | RG-BIL-05 | La signature du webhook Stripe est vérifiée avant traitement |
+| RG-BIL-06 | Un nouvel utilisateur reçoit automatiquement un essai PRO de 14 jours |
+| RG-BIL-07 | L'essai expire automatiquement (cron horaire) : downgrade vers FREE |
+| RG-BIL-08 | Le paiement Stripe convertit l'essai en abonnement payant (flag trial retiré) |
 
 ### 4.5 Webhooks & Notifications
 
@@ -441,6 +491,8 @@ Option de base de données MongoDB dans le wizard de génération :
 | RG-NOT-03 | Le payload est signé en HMAC-SHA256 si un secret token est configuré |
 | RG-NOT-04 | Les delivery logs sont conservés 30 jours |
 | RG-NOT-05 | Un webhook inactif (`active=false`) ne reçoit aucune notification |
+| RG-NOT-06 | Le canal EMAIL utilise JavaMailSender (SMTP) avec template HTML responsive |
+| RG-NOT-07 | L'email est conditionnel (`@ConditionalOnProperty notification.email.enabled=true`) |
 
 ### 4.6 Intelligence Artificielle
 
@@ -537,4 +589,4 @@ Déploiement haute disponibilité avec auto-scaling, monitoring complet, et tous
 | LLM API payante | Coût par token (Claude/OpenAI) | Rate limiting par plan, pas de LLM en FREE |
 | Webhooks fire-and-forget | Pas de garantie de livraison exacte | Retry 3x + backoff exponentiel |
 | Stripe mode test en dev | Pas de vrais paiements | Basculer en live via clé API prod |
-| Extension VS Code non publiée | Installation manuelle (.vsix) | Publication Marketplace prévue |
+| Extension VS Code | Publication via workflow CI (tag ext-v*) | Secrets VSCE_PAT et OVSX_PAT requis |

@@ -37,6 +37,8 @@ SpringForge est un générateur de projets Spring Boot enterprise-grade, constru
 | LLM Client | Spring WebFlux (WebClient) | intégré |
 | MongoDB (optionnel) | Spring Data MongoDB | intégré |
 | Migrations MongoDB | Mongock | 5.x |
+| MySQL (optionnel) | mysql-connector-j | 8.x |
+| Email | Spring Boot Starter Mail | intégré |
 
 ### 2.2 Frontend
 
@@ -385,6 +387,7 @@ cp .env.example .env  # Configurer les variables
 | ci.yml | Push/PR | Build Maven, tests, build frontend, security scan |
 | release.yml | Tag v* | Build Docker images, push GHCR, deploy staging |
 | deploy-prod.yml | Manual | Validation + déploiement production |
+| publish-extensions.yml | Tag ext-v* / Manual | Build + publish VS Code & IntelliJ extensions |
 
 ### 7.6 Configuration conditionnelle
 
@@ -410,6 +413,10 @@ Les services Kafka et Keycloak sont optionnels en production :
 | Admin | 2 fichiers (AdminUser + Audit) | Gestion users + audit |
 | Tenant | 2 fichiers (Quota + Organization) | Quotas + API keys |
 | i18n | 1 fichier (I18nService) | Messages + fallback locale |
+| Billing | 1 fichier (BillingServiceTest) | Checkout, webhook handlers, trial |
+| AI | 1 fichier (AiAssistantServiceTest) | Review, suggest, generate, stream |
+| Notification | 1 fichier (NotificationServiceTest) | Dispatch, retry, test webhook |
+| Storage | 1 fichier (StorageCleanupSchedulerTest) | Cleanup, skip null, continue on error |
 
 ### 8.2 Tests E2E (Playwright)
 
@@ -420,6 +427,9 @@ Les services Kafka et Keycloak sont optionnels en production :
 | admin.spec.ts | Dashboard, users, audit |
 | i18n.spec.ts | Changement locale, traductions |
 | organization.spec.ts | Settings, membres, API keys |
+| billing.spec.ts | Plans, upgrade, invoices |
+| webhooks.spec.ts | Create, form validation, test, list |
+| ai-chat.spec.ts | Chat interface, send message, streaming |
 
 ---
 
@@ -591,3 +601,46 @@ Les services Kafka et Keycloak sont optionnels en production :
 | Docker | MongoDB 7 avec healthcheck |
 | Tests | Testcontainers MongoDB |
 | Détection | `hasMongoDB()` dans GenerateStep |
+
+### 12.6 MySQL (Support générateur)
+
+| Composant | Description |
+|-----------|-------------|
+| Templates | `application-mysql.yml.ftl` (datasource, JPA dialect, Flyway), `docker-compose-mysql.yml.ftl` |
+| Dépendances auto | mysql-connector-j, spring-boot-starter-data-jpa |
+| Docker | MySQL 8.0 avec healthcheck (`mysqladmin ping`) |
+| Config | Port 3306, dialect `MySQLDialect`, Flyway migrations |
+| Détection | `hasMySQL()` dans GenerateStep |
+
+### 12.7 Période d'essai PRO (Trial)
+
+| Composant | Description |
+|-----------|-------------|
+| Entité | `Subscription` : champs `trial` (boolean), `trialEndsAt` (LocalDateTime) |
+| Création | `Subscription.createProTrial(userId)` : 14 jours PRO à l'inscription |
+| Expiration | `BillingService.expireTrials()` : cron horaire, downgrade vers FREE |
+| Conversion | `Subscription.convertFromTrial()` : retire le flag trial lors du paiement Stripe |
+| Frontend | Bannière trial avec compte à rebours + bouton "Subscribe Now" |
+| Repository | `findByTrialTrueAndTrialEndsAtBefore(LocalDateTime)` |
+
+### 12.8 Email Notifications (SMTP)
+
+| Composant | Description |
+|-----------|-------------|
+| Classe | `EmailNotificationSender` (@ConditionalOnProperty `notification.email.enabled=true`) |
+| Dépendance | `spring-boot-starter-mail` (JavaMailSender) |
+| Format | HTML MimeMessage (template inline avec formatSubject + buildHtmlBody) |
+| Config | SMTP host/port/username/password via variables d'environnement |
+| Intégration | Canal `EMAIL` dans `NotificationService.deliver()` |
+| Null-safe | `@Autowired(required = false)` — service absent si email désactivé |
+
+### 12.9 Publication Extensions (Marketplace)
+
+| Composant | Description |
+|-----------|-------------|
+| Workflow | `.github/workflows/publish-extensions.yml` |
+| Trigger | Tag `ext-v*` ou `workflow_dispatch` (choix vscode/intellij/all) |
+| VS Code | `vsce package` + `vsce publish` + Open VSX Registry |
+| IntelliJ | `gradlew buildPlugin` + `gradlew verifyPlugin` + `gradlew publishPlugin` |
+| Secrets | `VSCE_PAT`, `OVSX_PAT`, `JETBRAINS_MARKETPLACE_TOKEN` |
+| Artefacts | Upload .vsix et .zip comme artifacts GitHub |

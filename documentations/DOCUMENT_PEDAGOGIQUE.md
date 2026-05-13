@@ -294,7 +294,10 @@ SpringInitializer-plus-plus/
 │   │   │   ├── admin/                ← Panel admin
 │   │   │   ├── recommendations/      ← Panel recommandations
 │   │   │   ├── organization/         ← Settings organisation
-│   │   │   └── template-editor/      ← Éditeur visuel de blueprints
+│   │   │   ├── template-editor/      ← Éditeur visuel de blueprints
+│   │   │   ├── billing/              ← Abonnements, plans, factures Stripe
+│   │   │   ├── webhooks/             ← Configuration & historique webhooks
+│   │   │   └── ai/                   ← Chat IA streaming (SSE)
 │   │   └── i18n/                     ← Service + pipe traduction
 │   ├── src/assets/i18n/              ← Fichiers JSON traduction
 │   ├── e2e/                          ← Tests Playwright
@@ -325,7 +328,8 @@ SpringInitializer-plus-plus/
 ├── .github/workflows/                ← CI/CD GitHub Actions
 │   ├── ci.yml                        ← Build + Test
 │   ├── release.yml                   ← Docker + Deploy staging
-│   └── deploy-prod.yml              ← Deploy production
+│   ├── deploy-prod.yml              ← Deploy production
+│   └── publish-extensions.yml        ← Publish VS Code + IntelliJ extensions
 │
 ├── docker-compose.yml                ← Stack locale dev (9 services)
 ├── docker-compose.prod.yml           ← Stack production VPS (5 services + HTTPS)
@@ -625,6 +629,77 @@ ai:
 ```
 
 **3. C'est tout !** Le `AiAssistantService` utilise l'interface `LlmService` — il ne sait pas quel provider est derrière.
+
+#### Exemple : Ajouter un nouveau support de base de données au générateur
+
+**1. Créer les templates FreeMarker** dans `src/main/resources/templates/core/<db>/` :
+
+- `application-<db>.yml.ftl` : configuration datasource, dialect, migrations
+- `docker-compose-<db>.yml.ftl` : service Docker avec healthcheck
+
+**2. Ajouter la méthode de détection dans `GenerateStep`** :
+
+```java
+private boolean hasMySQL(ProjectConfiguration config) {
+    return config.dependencies().stream()
+            .anyMatch(d -> d.artifactId().contains("mysql"));
+}
+```
+
+**3. Brancher dans `generateApplicationYml()` et `generateDockerCompose()`** :
+
+```java
+} else if (hasMySQL(config)) {
+    dbModel.put("type", "mysql");
+    dbModel.put("port", "3306");
+    dbModel.put("driver", "com.mysql.cj.jdbc.Driver");
+    dbModel.put("dialect", "org.hibernate.dialect.MySQLDialect");
+}
+```
+
+**4. C'est tout !** Le pipeline détecte automatiquement le type de DB par les dépendances sélectionnées et génère les fichiers appropriés.
+
+#### Exemple : Implémenter une période d'essai (Trial)
+
+**1. Ajouter des champs à l'entité** :
+
+```java
+@Column(name = "trial")
+private boolean trial;
+
+@Column(name = "trial_ends_at")
+private LocalDateTime trialEndsAt;
+```
+
+**2. Factory method pour la création** :
+
+```java
+public static Subscription createProTrial(UUID userId) {
+    Subscription sub = new Subscription(userId, SubscriptionPlan.PRO);
+    sub.trial = true;
+    sub.trialEndsAt = LocalDateTime.now().plusDays(14);
+    return sub;
+}
+```
+
+**3. Scheduler pour l'expiration** :
+
+```java
+@Scheduled(cron = "0 0 * * * *") // Toutes les heures
+@Transactional
+public void expireTrials() {
+    List<Subscription> expired = repository.findByTrialTrueAndTrialEndsAtBefore(LocalDateTime.now());
+    for (Subscription sub : expired) {
+        sub.expireTrial(); // Passe en FREE
+        repository.save(sub);
+    }
+}
+```
+
+**Points clés** :
+- Le scheduler tourne indépendamment (pas besoin d'action utilisateur)
+- `convertFromTrial()` (sans changer le plan) est appelé lors du paiement Stripe
+- Le frontend affiche une bannière avec la date d'expiration
 
 #### Exemple : Ajouter une nouvelle langue (i18n)
 
@@ -1203,3 +1278,7 @@ ci:       configuration CI/CD
 | **ConditionalOnProperty** | Annotation Spring qui active un bean selon une propriété de configuration |
 | **Mongock** | Framework de migration de données pour MongoDB (équivalent de Flyway) |
 | **Webview API** | API VS Code permettant de créer des UI HTML/CSS/JS dans l'éditeur |
+| **Trial** | Période d'essai gratuite (14 jours PRO) offerte aux nouveaux utilisateurs |
+| **VSCE** | VS Code Extension CLI — outil pour packager et publier des extensions VS Code |
+| **Open VSX** | Registry open-source alternatif au VS Code Marketplace (utilisé par Codium, Gitpod) |
+| **Gradle IntelliJ Plugin** | Plugin Gradle pour builder et publier des plugins JetBrains |
