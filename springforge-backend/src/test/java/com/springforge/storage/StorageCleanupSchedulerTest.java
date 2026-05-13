@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -44,8 +45,8 @@ class StorageCleanupSchedulerTest {
 
     @Test
     void cleanup_shouldDeleteStorageForExpiredGenerations() {
-        Generation gen = mock(Generation.class);
-        when(gen.getOutputPath()).thenReturn("generations/test-uuid.zip");
+        Generation gen = new Generation(UUID.randomUUID(), UUID.randomUUID(), "{}");
+        gen.complete("generations/test-uuid.zip");
         when(generationRepository.findByStatusAndCreatedAtBefore(eq(GenerationStatus.COMPLETED), any()))
                 .thenReturn(List.of(gen));
 
@@ -56,8 +57,7 @@ class StorageCleanupSchedulerTest {
 
     @Test
     void cleanup_shouldSkipGenerationsWithNullPath() {
-        Generation gen = mock(Generation.class);
-        when(gen.getOutputPath()).thenReturn(null);
+        Generation gen = new Generation(UUID.randomUUID(), UUID.randomUUID(), "{}");
         when(generationRepository.findByStatusAndCreatedAtBefore(eq(GenerationStatus.COMPLETED), any()))
                 .thenReturn(List.of(gen));
 
@@ -68,10 +68,10 @@ class StorageCleanupSchedulerTest {
 
     @Test
     void cleanup_shouldContinueOnDeleteFailure() {
-        Generation gen1 = mock(Generation.class);
-        Generation gen2 = mock(Generation.class);
-        when(gen1.getOutputPath()).thenReturn("file1.zip");
-        when(gen2.getOutputPath()).thenReturn("file2.zip");
+        Generation gen1 = new Generation(UUID.randomUUID(), UUID.randomUUID(), "{}");
+        gen1.complete("file1.zip");
+        Generation gen2 = new Generation(UUID.randomUUID(), UUID.randomUUID(), "{}");
+        gen2.complete("file2.zip");
         when(generationRepository.findByStatusAndCreatedAtBefore(eq(GenerationStatus.COMPLETED), any()))
                 .thenReturn(List.of(gen1, gen2));
         doThrow(new RuntimeException("Failed")).when(storageService).delete("file1.zip");

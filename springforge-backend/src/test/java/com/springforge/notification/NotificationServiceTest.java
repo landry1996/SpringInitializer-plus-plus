@@ -3,7 +3,6 @@ package com.springforge.notification;
 import com.springforge.notification.application.NotificationService;
 import com.springforge.notification.domain.*;
 import com.springforge.notification.infrastructure.DeliveryLogRepository;
-import com.springforge.notification.infrastructure.EmailNotificationSender;
 import com.springforge.notification.infrastructure.WebhookConfigRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,16 +27,13 @@ class NotificationServiceTest {
     @Mock
     private DeliveryLogRepository deliveryLogRepository;
 
-    @Mock
-    private EmailNotificationSender emailSender;
-
     private NotificationService notificationService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
         notificationService = new NotificationService(
-                webhookConfigRepository, deliveryLogRepository, objectMapper, emailSender);
+                webhookConfigRepository, deliveryLogRepository, objectMapper, null);
     }
 
     @Test

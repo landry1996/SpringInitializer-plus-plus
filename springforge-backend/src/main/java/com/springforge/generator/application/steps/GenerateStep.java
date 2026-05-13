@@ -210,6 +210,13 @@ public class GenerateStep implements PipelineStep {
         Map<String, Object> ymlModel = new HashMap<>(model);
         if (hasMongoDB(config)) {
             ymlModel.put("mongodb", true);
+        } else if (hasMySQL(config)) {
+            Map<String, Object> database = new HashMap<>();
+            database.put("type", "mysql");
+            database.put("port", "3306");
+            database.put("driver", "com.mysql.cj.jdbc.Driver");
+            database.put("dialect", "org.hibernate.dialect.MySQLDialect");
+            ymlModel.put("database", database);
         } else if (config.dependencies() != null && config.dependencies().stream()
                 .anyMatch(d -> d.contains("data-jpa") || d.contains("jdbc"))) {
             Map<String, Object> database = new HashMap<>();
@@ -225,6 +232,11 @@ public class GenerateStep implements PipelineStep {
     private boolean hasMongoDB(ProjectConfiguration config) {
         return config.dependencies() != null && config.dependencies().stream()
                 .anyMatch(d -> d.contains("data-mongodb"));
+    }
+
+    private boolean hasMySQL(ProjectConfiguration config) {
+        return config.dependencies() != null && config.dependencies().stream()
+                .anyMatch(d -> d.contains("mysql"));
     }
 
     private void generateDockerfile(Path projectDir, Map<String, Object> model) throws Exception {
@@ -251,6 +263,18 @@ public class GenerateStep implements PipelineStep {
             envVars.put("MONGO_INITDB_ROOT_USERNAME", config.metadata().artifactId());
             envVars.put("MONGO_INITDB_ROOT_PASSWORD", config.metadata().artifactId());
             envVars.put("MONGO_INITDB_DATABASE", config.metadata().artifactId());
+            database.put("envVars", envVars);
+        } else if (hasMySQL(config)) {
+            database.put("serviceName", "mysql");
+            database.put("image", "mysql:8.0");
+            database.put("port", "3306");
+            database.put("volumePath", "mysql/data");
+            database.put("healthCheck", "[\"CMD\", \"mysqladmin\", \"ping\", \"-h\", \"localhost\"]");
+            Map<String, String> envVars = new HashMap<>();
+            envVars.put("MYSQL_ROOT_PASSWORD", "root");
+            envVars.put("MYSQL_DATABASE", config.metadata().artifactId());
+            envVars.put("MYSQL_USER", config.metadata().artifactId());
+            envVars.put("MYSQL_PASSWORD", config.metadata().artifactId());
             database.put("envVars", envVars);
         } else {
             database.put("serviceName", "postgres");
