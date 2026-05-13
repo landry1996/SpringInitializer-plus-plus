@@ -5,11 +5,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.modulith.Modulithic;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication(exclude = {
         KafkaAutoConfiguration.class
 })
 @EnableAsync
+@EnableScheduling
 @Modulithic(
         systemName = "SpringForge",
         sharedModules = "shared"

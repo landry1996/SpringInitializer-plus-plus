@@ -29,3 +29,8 @@ app:
   generation:
     output-dir: ./target/generated-test
     max-concurrent: 2
+  storage:
+    type: filesystem
+    retention-days: 1
+    filesystem:
+      base-dir: ./target/generated-test

@@ -15,8 +15,9 @@ import com.springforge.generator.domain.pipeline.StepResult;
 import com.springforge.generator.application.steps.ValidateStep;
 import com.springforge.shared.exception.ResourceNotFoundException;
 import com.springforge.shared.security.AuthenticatedUser;
+import com.springforge.storage.StorageService;
 import jakarta.validation.Valid;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -25,10 +26,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.InputStream;
 import java.util.List;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.UUID;
 
 @RestController
@@ -39,15 +38,18 @@ public class GeneratorController {
     private final GenerationRepository generationRepository;
     private final ValidateStep validateStep;
     private final DependencyConflictDetector conflictDetector;
+    private final StorageService storageService;
 
     public GeneratorController(GenerateProjectUseCase generateProjectUseCase,
                                GenerationRepository generationRepository,
                                ValidateStep validateStep,
-                               DependencyConflictDetector conflictDetector) {
+                               DependencyConflictDetector conflictDetector,
+                               StorageService storageService) {
         this.generateProjectUseCase = generateProjectUseCase;
         this.generationRepository = generationRepository;
         this.validateStep = validateStep;
         this.conflictDetector = conflictDetector;
+        this.storageService = storageService;
     }
 
     @PostMapping("/projects/validate")
@@ -101,16 +103,17 @@ public class GeneratorController {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
 
-        Path zipPath = Path.of(generation.getOutputPath());
-        if (!Files.exists(zipPath)) {
+        String objectKey = generation.getOutputPath();
+        if (objectKey == null || !storageService.exists(objectKey)) {
             return ResponseEntity.notFound().build();
         }
 
-        Resource resource = new FileSystemResource(zipPath);
+        InputStream stream = storageService.download(objectKey);
+        String filename = objectKey.contains("/") ? objectKey.substring(objectKey.lastIndexOf('/') + 1) : objectKey;
+        Resource resource = new InputStreamResource(stream);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + zipPath.getFileName().toString() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .body(resource);
     }
 }

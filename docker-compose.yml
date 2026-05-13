@@ -11,6 +11,10 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_DATA_REDIS_HOST: redis
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8180/realms/springforge
+      STORAGE_TYPE: minio
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
     depends_on:
       postgres:
         condition: service_healthy
@@ -96,6 +100,26 @@ services:
     networks:
       - springforge-net
 
+  minio:
+    image: minio/minio:latest
+    container_name: springforge-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - springforge-net
+
   keycloak:
     image: quay.io/keycloak/keycloak:23.0
     container_name: springforge-keycloak
@@ -137,6 +161,7 @@ services:
 volumes:
   pgdata:
   redis-data:
+  minio-data:
   prometheus-data:
   grafana-data:
 

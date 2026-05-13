@@ -3,6 +3,7 @@ package com.springforge.generator.application.steps;
 import com.springforge.generator.domain.pipeline.GenerationContext;
 import com.springforge.generator.domain.pipeline.PipelineStep;
 import com.springforge.generator.domain.pipeline.StepResult;
+import com.springforge.storage.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
@@ -15,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -23,6 +25,12 @@ import java.util.zip.ZipOutputStream;
 public class PostProcessStep implements PipelineStep {
 
     private static final Logger log = LoggerFactory.getLogger(PostProcessStep.class);
+
+    private final StorageService storageService;
+
+    public PostProcessStep(StorageService storageService) {
+        this.storageService = storageService;
+    }
 
     @Override
     public StepResult execute(GenerationContext context) {
@@ -35,8 +43,13 @@ public class PostProcessStep implements PipelineStep {
             Path zipFile = outputDir.getParent().resolve(outputDir.getFileName().toString() + ".zip");
             createZip(outputDir, zipFile);
             deleteDirectory(outputDir);
-            context.setOutputDirectory(zipFile);
-            log.info("Project packaged as ZIP: {}", zipFile);
+
+            String objectKey = UUID.randomUUID() + "/" + zipFile.getFileName().toString();
+            storageService.upload(zipFile, objectKey);
+            Files.deleteIfExists(zipFile);
+
+            context.setOutputDirectory(Path.of(objectKey));
+            log.info("Project packaged and stored: {}", objectKey);
             return StepResult.ok();
         } catch (IOException e) {
             log.error("Post-processing failed", e);
