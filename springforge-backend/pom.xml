@@ -182,6 +182,12 @@
             <version>26.1.0</version>
         </dependency>
 
+        <!-- WebClient for LLM API calls -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

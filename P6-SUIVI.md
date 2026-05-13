@@ -9,7 +9,7 @@
 | 3 | Billing Stripe | ✅ DONE | Paiement réel, webhooks Stripe, gestion abonnements, factures |
 | 4 | VS Code Extension | ✅ DONE | Plugin VS Code complémentaire à IntelliJ pour génération de projets |
 | 5 | Template Editor visuel | ✅ DONE | Éditeur WYSIWYG de blueprints dans le frontend Angular |
-| 6 | LLM Integration | ⬜ TODO | Génération de code intelligente via Claude/GPT (code review, suggestions) |
+| 6 | LLM Integration | ✅ DONE | Génération de code intelligente via Claude/GPT (code review, suggestions) |
 | 7 | Webhooks & Notifications | ⬜ TODO | Notifications Slack/email sur événements (génération, quota, alertes) |
 
 ## Détails techniques
