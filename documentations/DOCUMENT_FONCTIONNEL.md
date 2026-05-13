@@ -222,6 +222,99 @@ springforge blueprints list
 springforge config show
 ```
 
+### 2.9 Extension VS Code
+
+Plugin complémentaire au plugin IntelliJ pour les développeurs VS Code :
+
+| Feature | Description |
+|---------|-------------|
+| Commande palette | "SpringForge: Generate Project" |
+| Wizard webview | Formulaire multi-step dans un panel VS Code |
+| Barre de statut | Progression de génération en temps réel |
+| Output channel | Logs détaillés de la génération |
+| Settings | URL serveur, API key, langue |
+| Auto-ouverture | Le projet généré s'ouvre dans le workspace |
+
+### 2.10 Éditeur visuel de templates (Template Editor)
+
+Composant Angular pour créer et éditer des blueprints en mode WYSIWYG :
+
+| Section | Description |
+|---------|-------------|
+| Metadata | Nom, description, version, catégorie, tags |
+| Dépendances | Ajout/suppression avec auto-complétion |
+| Fichiers | Arborescence drag-and-drop des fichiers à générer |
+| Variables | Définition de variables template avec types et valeurs par défaut |
+| Raw YAML | Éditeur Monaco pour édition directe du YAML/Freemarker |
+| Preview | Prévisualisation live de la structure générée |
+| Import/Export | Import/Export de blueprints (JSON/YAML) |
+
+Routes : `/editor/new` (nouveau blueprint), `/editor/:id` (éditer existant)
+
+### 2.11 Intégration LLM (Intelligence Artificielle)
+
+Assistance IA pour améliorer les projets générés :
+
+| Fonctionnalité | Description |
+|---------------|-------------|
+| Code Review | Analyse automatique du projet généré (qualité, sécurité, performance) |
+| Suggestions | Recommandations d'amélioration d'architecture |
+| Génération de code | Création de services, controllers, tests boilerplate |
+| Chat assistant | Conversation interactive avec streaming SSE |
+| Multi-provider | Claude (Anthropic) ou GPT (OpenAI), configurable |
+
+### 2.12 Stockage cloud (MinIO)
+
+Persistence des artefacts générés sur object storage S3-compatible :
+
+| Fonctionnalité | Description |
+|---------------|-------------|
+| Upload automatique | Les ZIPs générés sont uploadés dans MinIO |
+| Download | Téléchargement via URL pré-signée ou streaming |
+| Rétention | Suppression automatique après 30 jours |
+| Fallback local | Mode filesystem en développement |
+| Bucket | `springforge-generations` |
+
+### 2.13 Billing & Abonnements (Stripe)
+
+Gestion complète de la facturation :
+
+| Fonctionnalité | Description |
+|---------------|-------------|
+| Plans | FREE (0€), PRO (29€/mois), ENTERPRISE (99€/mois) |
+| Checkout | Session de paiement Stripe hébergée |
+| Portail client | Gestion abonnement, méthode de paiement |
+| Factures | Historique complet des paiements |
+| Webhooks Stripe | Mise à jour automatique du plan en temps réel |
+| Période d'essai | 14 jours PRO offerts aux nouveaux utilisateurs |
+
+### 2.14 Webhooks & Notifications
+
+Système de notifications sortantes configurables par organisation :
+
+| Fonctionnalité | Description |
+|---------------|-------------|
+| Canaux | Webhook HTTP, Slack (Incoming Webhook), Email |
+| Événements | Génération réussie/échouée, quota atteint/dépassé, changement plan, nouveau membre |
+| Configuration | Interface CRUD pour ajouter/modifier/supprimer des webhooks |
+| Test | Envoi d'un message de test pour vérifier la configuration |
+| Historique | Journal complet des envois avec statut (succès/échec) |
+| Retry | 3 tentatives avec backoff exponentiel en cas d'échec |
+| Sécurité | Signature HMAC-SHA256 pour authentifier les payloads |
+
+### 2.15 Support MongoDB (Générateur)
+
+Option de base de données MongoDB dans le wizard de génération :
+
+| Fonctionnalité | Description |
+|---------------|-------------|
+| Wizard step DB | Choix entre PostgreSQL (JPA) et MongoDB |
+| Templates | Configuration MongoDB, documents, repositories |
+| Migrations | Mongock au lieu de Flyway |
+| Docker Compose | Service MongoDB 7 avec healthcheck |
+| Tests | Testcontainers MongoDB + embedded-mongo |
+| Dépendances auto | Résolution automatique des libs complémentaires |
+
 ---
 
 ## 3. Parcours utilisateur
@@ -261,6 +354,40 @@ springforge config show
 5. Gestion des utilisateurs si besoin
 ```
 
+### 3.4 Parcours "Développeur VS Code — Génération depuis l'IDE"
+
+```
+1. Installation extension SpringForge depuis le Marketplace VS Code
+2. Configuration Settings : URL serveur + API key
+3. Ctrl+Shift+P → "SpringForge: Generate Project"
+4. Wizard multi-step dans panel webview
+5. Clic "Generate" → Barre de statut affiche la progression
+6. Projet téléchargé → Ouverture automatique dans le workspace
+```
+
+### 3.5 Parcours "Tech Lead — Configuration webhooks"
+
+```
+1. Accès Settings Organisation → Webhooks
+2. Clic "Nouveau Webhook"
+3. Configuration : nom, URL, canal (Webhook/Slack), événements souscrits
+4. Optionnel : secret token pour signature HMAC
+5. Clic "Test" → Vérification envoi réussi
+6. Activation → Notifications automatiques sur événements
+7. Consultation historique des envois si problème
+```
+
+### 3.6 Parcours "CTO — Upgrade plan et IA"
+
+```
+1. Dashboard → Quotas presque atteints
+2. Clic "Upgrade" → Redirection Stripe Checkout
+3. Paiement → Plan PRO activé immédiatement
+4. Accès à l'assistant IA : code review, suggestions
+5. Chat IA pour optimiser l'architecture du projet
+6. Portail Stripe pour gérer la facturation
+```
+
 ---
 
 ## 4. Règles métier
@@ -295,7 +422,36 @@ springforge config show
 | RG-QTA-04 | Un upgrade de plan prend effet immédiatement |
 | RG-QTA-05 | Un downgrade prend effet à la fin de la période en cours |
 
-### 4.4 Sécurité
+### 4.4 Billing
+
+| Règle | Description |
+|-------|-------------|
+| RG-BIL-01 | Le checkout Stripe redirige vers une session hébergée (pas de collecte carte côté serveur) |
+| RG-BIL-02 | Le plan est mis à jour uniquement sur réception du webhook Stripe (pas sur le retour checkout) |
+| RG-BIL-03 | Un impayé (`invoice.payment_failed`) passe le statut en PAST_DUE |
+| RG-BIL-04 | Une annulation (`customer.subscription.deleted`) passe en CANCELED, le plan FREE est réactivé |
+| RG-BIL-05 | La signature du webhook Stripe est vérifiée avant traitement |
+
+### 4.5 Webhooks & Notifications
+
+| Règle | Description |
+|-------|-------------|
+| RG-NOT-01 | Un webhook est dispatché de manière asynchrone (non-bloquant pour l'action principale) |
+| RG-NOT-02 | Maximum 3 tentatives de livraison avec backoff exponentiel (2^n minutes) |
+| RG-NOT-03 | Le payload est signé en HMAC-SHA256 si un secret token est configuré |
+| RG-NOT-04 | Les delivery logs sont conservés 30 jours |
+| RG-NOT-05 | Un webhook inactif (`active=false`) ne reçoit aucune notification |
+
+### 4.6 Intelligence Artificielle
+
+| Règle | Description |
+|-------|-------------|
+| RG-AI-01 | Le provider LLM est configurable (Claude ou OpenAI) via propriété Spring |
+| RG-AI-02 | Les réponses longues sont streamées en SSE (Server-Sent Events) |
+| RG-AI-03 | Les clés API LLM sont stockées en variables d'environnement (jamais en dur) |
+| RG-AI-04 | Le modèle et la température sont configurables par requête |
+
+### 4.7 Sécurité
 
 | Règle | Description |
 |-------|-------------|
@@ -304,6 +460,8 @@ springforge config show
 | RG-SEC-03 | Les tokens JWT expirent après 1h (refresh token : 7j) |
 | RG-SEC-04 | Les endpoints admin nécessitent le rôle ADMIN |
 | RG-SEC-05 | Les entrées utilisateur sont validées contre injection |
+| RG-SEC-06 | Les endpoints webhook Stripe sont en permitAll (authentification par signature) |
+| RG-SEC-07 | Le stockage MinIO utilise des credentials séparés (MINIO_ACCESS_KEY / SECRET_KEY) |
 
 ---
 
@@ -329,6 +487,10 @@ springforge config show
 |---------|-------|-----------|-------------|
 | PostgreSQL | Persistance données | JDBC | Oui |
 | Redis | Cache applicatif | Redis Protocol | Oui |
+| MinIO | Stockage objets (ZIPs générés) | S3 API | Non (fallback filesystem) |
+| Stripe | Paiement, abonnements, factures | REST API + Webhooks | Non (mode FREE sans Stripe) |
+| Claude API | Assistance IA (Anthropic) | REST + SSE | Non (optionnel) |
+| OpenAI API | Assistance IA (OpenAI) | REST + SSE | Non (optionnel) |
 | Keycloak | Authentification SSO | OpenID Connect | Non (optionnel) |
 | Kafka | Événements async (génération, audit) | PLAINTEXT | Non (optionnel) |
 | Prometheus | Collecte métriques | HTTP scrape | Non (monitoring) |
@@ -336,6 +498,8 @@ springforge config show
 | GitHub Actions | CI/CD | Webhooks | Non (automation) |
 | GHCR | Registry Docker | OCI | Non (release) |
 | Let's Encrypt | Certificats SSL | ACME | Non (HTTPS prod) |
+| Slack | Notifications sortantes | Incoming Webhook | Non (notification) |
+| SMTP / SendGrid | Notifications email | SMTP | Non (notification) |
 
 ---
 
@@ -369,3 +533,8 @@ Déploiement haute disponibilité avec auto-scaling, monitoring complet, et tous
 | Plan FREE limité à 5 gen/mois | Friction pour adoption | Période d'essai PRO 14 jours |
 | i18n 4 langues seulement | Couverture géographique limitée | Extensible (ajout fichier .properties + .json) |
 | VPS 2 Go minimum | Pas de monitoring intégré | Monitoring via mode Kubernetes uniquement |
+| MinIO requis en prod | Plus de stockage local en production | Fallback filesystem pour dev/test |
+| LLM API payante | Coût par token (Claude/OpenAI) | Rate limiting par plan, pas de LLM en FREE |
+| Webhooks fire-and-forget | Pas de garantie de livraison exacte | Retry 3x + backoff exponentiel |
+| Stripe mode test en dev | Pas de vrais paiements | Basculer en live via clé API prod |
+| Extension VS Code non publiée | Installation manuelle (.vsix) | Publication Marketplace prévue |

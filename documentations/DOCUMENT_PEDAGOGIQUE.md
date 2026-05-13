@@ -103,7 +103,57 @@ public class RecommendationService {
 
 **Bénéfice** : Pour ajouter une nouvelle règle, il suffit de créer une classe `@Component` implémentant `RecommendationRule`. Aucune modification du service existant (Open/Closed Principle).
 
-### 1.5 Multi-tenancy
+### 1.5 Le pattern Provider / ConditionalOnProperty
+
+SpringForge utilise le pattern **Provider** pour basculer entre implémentations au runtime :
+
+```java
+// Interface commune
+public interface StorageService {
+    void upload(String key, InputStream data);
+    InputStream download(String key);
+}
+
+// Implémentation A : activée par défaut (dev)
+@Service
+@ConditionalOnProperty(name = "storage.type", havingValue = "filesystem", matchIfMissing = true)
+public class FileSystemStorageService implements StorageService { ... }
+
+// Implémentation B : activée en prod
+@Service
+@ConditionalOnProperty(name = "storage.type", havingValue = "minio")
+public class MinioStorageService implements StorageService { ... }
+```
+
+**Utilisé dans** :
+- **Storage** : FileSystem vs MinIO (propriété `storage.type`)
+- **LLM** : Claude vs OpenAI (propriété `ai.provider`)
+
+**Bénéfice** : On change d'implémentation en modifiant UNE variable d'environnement, sans toucher au code. Le code appelant ne voit que l'interface.
+
+### 1.6 Event-Driven Notifications (Observer pattern distribué)
+
+Le système de webhooks utilise un pattern Observer distribué :
+
+```
+[Action métier] ─── dispatch() ──▶ [NotificationService]
+                                         │
+                    ┌────────────────────┼────────────────────┐
+                    │                    │                    │
+                    ▼                    ▼                    ▼
+            [Webhook HTTP]       [Slack Webhook]       [Email SMTP]
+                    │                    │                    │
+                    ▼                    ▼                    ▼
+             Serveur client        Canal Slack         Boîte mail
+```
+
+Points clés :
+- **@Async** : le dispatch ne bloque PAS l'action principale
+- **Retry avec backoff** : 2^n minutes entre tentatives (1min, 2min, 4min)
+- **HMAC-SHA256** : signature du payload pour que le destinataire vérifie l'authenticité
+- **@Scheduled** : un scheduler relance les livraisons échouées toutes les 60s
+
+### 1.7 Multi-tenancy
 
 Le multi-tenant isole les données par organisation :
 
@@ -219,6 +269,10 @@ SpringInitializer-plus-plus/
 │   │   ├── tenant/                   ← Multi-organisation
 │   │   ├── i18n/                     ← Traductions
 │   │   ├── generator/                ← Pipeline de génération (25 fichiers)
+│   │   ├── storage/                  ← Stockage MinIO / FileSystem
+│   │   ├── billing/                  ← Stripe (abonnements, factures)
+│   │   ├── ai/                       ← LLM (Claude, OpenAI, streaming)
+│   │   ├── notification/             ← Webhooks & Notifications
 │   │   ├── user/                     ← Auth JWT
 │   │   ├── blueprint/                ← Définitions architecture
 │   │   └── template/                 ← Templates Freemarker
@@ -239,7 +293,8 @@ SpringInitializer-plus-plus/
 │   │   │   ├── marketplace/          ← Catalogue blueprints
 │   │   │   ├── admin/                ← Panel admin
 │   │   │   ├── recommendations/      ← Panel recommandations
-│   │   │   └── organization/         ← Settings organisation
+│   │   │   ├── organization/         ← Settings organisation
+│   │   │   └── template-editor/      ← Éditeur visuel de blueprints
 │   │   └── i18n/                     ← Service + pipe traduction
 │   ├── src/assets/i18n/              ← Fichiers JSON traduction
 │   ├── e2e/                          ← Tests Playwright
@@ -254,6 +309,12 @@ SpringInitializer-plus-plus/
 │       ├── settings/                 ← Configuration persistante
 │       ├── api/                      ← Client HTTP
 │       └── ui/                       ← Dialogues Swing
+│
+├── springforge-vscode/               ← Extension VS Code
+│   ├── package.json                  ← Manifest (commandes, settings)
+│   ├── src/extension.ts              ← Point d'entrée + status bar
+│   ├── src/client.ts                 ← Client HTTP API SpringForge
+│   └── src/panel.ts                  ← Wizard webview multi-step
 │
 ├── infra/
 │   ├── k8s/                          ← Manifestes Kubernetes (12 fichiers)
@@ -342,7 +403,95 @@ SpringInitializer-plus-plus/
 [Response JSON] → liste de recommandations triées
 ```
 
-### 2.5 Ajouter une nouvelle fonctionnalité : guide pas à pas
+### 2.5 Comprendre les nouveaux flux de données
+
+#### Flux : Paiement Stripe (Checkout → Webhook)
+
+```
+[Frontend]
+     │
+     │ POST /api/v1/billing/checkout { plan: "PRO" }
+     ▼
+[BillingController] → crée session Stripe Checkout
+     │
+     │ Redirige le navigateur vers Stripe
+     ▼
+[Page Stripe hébergée] → Utilisateur entre sa carte
+     │
+     │ Paiement réussi
+     ▼
+[Stripe serveur] ─── webhook ───▶ POST /api/v1/webhooks/stripe
+                                        │
+                                        ▼
+                                 [StripeWebhookController]
+                                        │ Vérifie signature
+                                        ▼
+                                 [BillingService.handleCheckoutCompleted()]
+                                        │
+                                        ▼
+                                 [Subscription] plan = PRO, status = ACTIVE
+                                        │
+                                        ▼
+                                 [NotificationService] → dispatch SUBSCRIPTION_CHANGED
+```
+
+#### Flux : Notification webhook sortante
+
+```
+[Événement métier] (ex: génération terminée)
+     │
+     │ notificationService.dispatch(orgId, GENERATION_COMPLETED, data)
+     ▼
+[NotificationService] @Async (thread séparé)
+     │
+     │ Cherche les WebhookConfig actifs de l'org avec cet événement
+     ▼
+[Pour chaque config]
+     │
+     ├─ Crée DeliveryLog (tentative #1)
+     ├─ Construit le payload JSON
+     ├─ Calcule signature HMAC-SHA256 (si secret configuré)
+     ├─ POST vers l'URL configurée
+     │
+     ├── Succès (2xx) → deliveryLog.recordSuccess()
+     │
+     └── Échec → deliveryLog.recordFailure(nextRetry = now + 2^n min)
+                    │
+                    ▼
+              [retryFailedDeliveries()] @Scheduled toutes les 60s
+                    │ Récupère les logs échoués dont nextRetryAt < now
+                    └── Re-tente la livraison (max 3 fois)
+```
+
+#### Flux : Assistance IA (Chat streaming)
+
+```
+[Frontend]
+     │
+     │ POST /api/v1/ai/chat (Accept: text/event-stream)
+     │ Body: { prompt, context, model, temperature }
+     ▼
+[AiController] produces = TEXT_EVENT_STREAM_VALUE
+     │
+     ▼
+[AiAssistantService.streamChat()]
+     │
+     ▼
+[LlmService.stream()] ← ClaudeLlmService OU OpenAiLlmService
+     │
+     │ WebClient vers API Claude/OpenAI (streaming)
+     ▼
+[Flux<String>] → chaque token envoyé en SSE au client
+     │
+     │ data: "Voici"
+     │ data: " une"
+     │ data: " suggestion"
+     │ data: "..."
+     ▼
+[Frontend] affiche les tokens au fur et à mesure (effet "typing")
+```
+
+### 2.6 Ajouter une nouvelle fonctionnalité : guide pas à pas
 
 #### Exemple : Ajouter une nouvelle règle de recommandation
 
@@ -416,6 +565,67 @@ class TestingRecommendationRuleTest {
 }
 ```
 
+#### Exemple : Ajouter un nouveau canal de notification
+
+**1. Ajouter le canal dans l'enum :**
+
+```java
+public enum NotificationChannel {
+    WEBHOOK,
+    SLACK,
+    EMAIL,
+    TEAMS  // ← Nouveau
+}
+```
+
+**2. Gérer le formatage dans NotificationService.deliver() :**
+
+```java
+if (config.getChannel() == NotificationChannel.TEAMS) {
+    // Microsoft Teams utilise un format "Adaptive Card"
+    payload = objectMapper.writeValueAsString(Map.of(
+        "@type", "MessageCard",
+        "summary", "SpringForge Notification",
+        "sections", List.of(Map.of("text", formatTeamsMessage(deliveryLog)))
+    ));
+}
+```
+
+**3. C'est tout !** Le reste (retry, HMAC, logging) fonctionne automatiquement car il est générique.
+
+#### Exemple : Ajouter un nouveau provider LLM
+
+**1. Créer la classe avec la bonne condition :**
+
+```java
+@Service
+@ConditionalOnProperty(name = "ai.provider", havingValue = "mistral")
+public class MistralLlmService implements LlmService {
+
+    @Override
+    public LlmResponse complete(LlmRequest request) {
+        // Appeler l'API Mistral via WebClient
+    }
+
+    @Override
+    public Flux<String> stream(LlmRequest request) {
+        // Streaming SSE depuis Mistral
+    }
+}
+```
+
+**2. Ajouter la config dans application.yml :**
+
+```yaml
+ai:
+  provider: mistral
+  mistral:
+    api-key: ${MISTRAL_API_KEY}
+    model: mistral-large-latest
+```
+
+**3. C'est tout !** Le `AiAssistantService` utilise l'interface `LlmService` — il ne sait pas quel provider est derrière.
+
 #### Exemple : Ajouter une nouvelle langue (i18n)
 
 **1. Backend** — Créer `springforge-backend/src/main/resources/messages_pt.properties` :
@@ -447,16 +657,21 @@ generation.completed=Projeto gerado com sucesso
 
 | Pattern | Où | Pourquoi |
 |---------|-----|----------|
-| **Strategy** | RecommendationRule | Algorithmes interchangeables |
+| **Strategy** | RecommendationRule, LlmService | Algorithmes interchangeables |
 | **Template Method** | Generation Pipeline | Phases fixes, implémentation variable |
-| **Observer** | WebSocket progress | Notification temps réel |
+| **Observer** | WebSocket progress, Webhooks | Notification temps réel |
 | **Repository** | JPA Repositories | Abstraction accès données |
-| **DTO / Record** | Recommendation, CompatibilityScore | Immutabilité, transport de données |
+| **DTO / Record** | Recommendation, LlmRequest/Response | Immutabilité, transport de données |
 | **Interceptor** | TenantInterceptor | Cross-cutting concern (tenant) |
 | **Filter Chain** | Security filters | Pipeline de sécurité |
 | **Builder** | ProjectConfig | Construction d'objets complexes |
 | **Singleton** | TenantContextHolder (ThreadLocal) | Un contexte par thread |
 | **Factory** | Blueprint categories | Création d'objets par type |
+| **Provider** | StorageService, LlmService | Implémentation conditionnelle (ConditionalOnProperty) |
+| **Retry / Backoff** | NotificationService | Résilience livraison webhooks |
+| **Async Fire-and-Forget** | NotificationService.dispatch() | Non-bloquant pour l'action principale |
+| **Streaming** | AiController (SSE) | Réponses LLM en flux continu |
+| **Adapter** | Stripe SDK, MinIO SDK | Encapsulation APIs tierces |
 
 ### 3.2 Strategy Pattern — En détail
 
@@ -490,7 +705,90 @@ Le Service itère sur TOUTES les implémentations sans les connaître.
 
 Chaque phase peut échouer indépendamment, et le statut est mis à jour en temps réel via WebSocket.
 
-### 3.4 ThreadLocal Pattern — Multi-tenant
+### 3.4 Provider Pattern — Implémentation conditionnelle
+
+```java
+// Le code appelant ne connaît que l'interface :
+@Service
+public class PostProcessStep {
+    private final StorageService storageService; // Quelle implémentation ?
+
+    // Spring injecte FileSystemStorageService OU MinioStorageService
+    // selon la propriété "storage.type" dans application.yml
+}
+```
+
+```yaml
+# application.yml (dev) :
+storage:
+  type: filesystem  # → FileSystemStorageService injecté
+
+# application-prod.yml :
+storage:
+  type: minio       # → MinioStorageService injecté
+```
+
+**Mécanisme Spring** : `@ConditionalOnProperty` fait que le bean n'est créé que si la condition est remplie. Résultat : une seule implémentation existe dans le contexte Spring à la fois.
+
+**Quand utiliser** :
+- Plusieurs implémentations d'un même service (stockage, notification, LLM)
+- Besoin de basculer sans code (juste config)
+- Distinction dev/test/prod
+
+### 3.5 Streaming SSE — Réponses en flux
+
+Pour les réponses LLM longues, SpringForge utilise le **Server-Sent Events** :
+
+```java
+@PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+public Flux<String> chat(@RequestBody LlmRequest request) {
+    return aiService.streamChat(request);
+    // Chaque token est envoyé au client dès qu'il arrive du LLM
+}
+```
+
+```
+Client                    Serveur                   LLM (Claude/GPT)
+  │                         │                           │
+  │── POST /ai/chat ──────▶│                           │
+  │                         │── Requête API ──────────▶│
+  │◀── data: "Bonjour" ────│◀── token "Bonjour" ──────│
+  │◀── data: " je" ────────│◀── token " je" ──────────│
+  │◀── data: " suis" ──────│◀── token " suis" ────────│
+  │◀── data: " Claude" ────│◀── token " Claude" ──────│
+  │◀── [DONE] ─────────────│◀── [fin stream] ─────────│
+```
+
+**Pourquoi pas WebSocket ?** SSE est plus simple (HTTP standard, reconnexion automatique, unidirectionnel serveur→client). WebSocket est réservé aux cas bidirectionnels (comme la barre de progression de génération).
+
+### 3.6 Retry avec Backoff Exponentiel
+
+```
+Tentative 1 (immédiate) : POST → timeout/500 → échec
+    ↓ attente 2^1 = 2 minutes
+Tentative 2 : POST → timeout/500 → échec
+    ↓ attente 2^2 = 4 minutes
+Tentative 3 : POST → 200 OK → succès ✅
+
+OU
+
+Tentative 3 : POST → échec → ABANDON (max atteint)
+```
+
+**Pourquoi exponentiel ?** Éviter de surcharger un serveur déjà en difficulté. Le délai croissant laisse le temps de récupérer.
+
+**Implémentation** :
+```java
+@Scheduled(fixedDelay = 60000) // Vérifie toutes les 60s
+public void retryFailedDeliveries() {
+    List<DeliveryLog> failed = repository
+        .findBySuccessFalseAndAttemptCountLessThanAndNextRetryAtBefore(
+            MAX_RETRY_ATTEMPTS, LocalDateTime.now());
+    // Seuls les logs dont nextRetryAt est dans le passé sont relancés
+}
+```
+
+### 3.7 ThreadLocal Pattern — Multi-tenant
 
 ```java
 public class TenantContextHolder {
@@ -731,10 +1029,11 @@ frame-ancestors 'none';      → Personne ne peut nous iframer
 **Mode local (docker-compose.yml)** — développement, tous les services :
 ```yaml
 services:
-  backend:    → dépend de postgres, kafka, redis
+  backend:    → dépend de postgres, kafka, redis, minio
   frontend:   → dépend de backend (proxy nginx → backend:8080)
   postgres:   → stockage persistant (volume pgdata)
   redis:      → cache en mémoire
+  minio:      → stockage objets S3-compatible (port 9000/9001)
   kafka:      → dépend de zookeeper
   zookeeper:  → coordination Kafka
   keycloak:   → authentification
@@ -892,3 +1191,15 @@ ci:       configuration CI/CD
 | **WebSocket** | Protocole de communication bidirectionnelle temps réel |
 | **Standalone Component** | Composant Angular auto-suffisant (pas besoin de NgModule) |
 | **Signal** | Primitive réactive Angular pour gérer l'état |
+| **MinIO** | Serveur de stockage d'objets compatible S3 (alternative open-source à AWS S3) |
+| **Object Storage** | Stockage de fichiers par clé (key/value), sans hiérarchie de dossiers |
+| **Stripe** | Plateforme de paiement en ligne (checkout, abonnements, factures) |
+| **Webhook** | Callback HTTP déclenché par un événement — le serveur appelle un URL externe |
+| **HMAC-SHA256** | Algorithme de signature cryptographique pour authentifier un message |
+| **Backoff exponentiel** | Stratégie de retry où le délai double à chaque tentative (2^n) |
+| **SSE** | Server-Sent Events — flux unidirectionnel serveur→client via HTTP |
+| **Flux** | Type réactif Spring WebFlux représentant un flux de 0 à N éléments |
+| **LLM** | Large Language Model — modèle d'IA générative (Claude, GPT) |
+| **ConditionalOnProperty** | Annotation Spring qui active un bean selon une propriété de configuration |
+| **Mongock** | Framework de migration de données pour MongoDB (équivalent de Flyway) |
+| **Webview API** | API VS Code permettant de créer des UI HTML/CSS/JS dans l'éditeur |

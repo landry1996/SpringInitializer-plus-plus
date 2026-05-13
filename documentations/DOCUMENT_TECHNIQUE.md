@@ -8,6 +8,8 @@ SpringForge est un générateur de projets Spring Boot enterprise-grade, constru
 - **Frontend** : Angular 18 (SPA standalone components)
 - **CLI** : Go + Cobra (outil en ligne de commande)
 - **Plugin IntelliJ** : Java + IntelliJ Platform SDK
+- **Extension VS Code** : TypeScript + Webview API
+- **Module IA** : Intégration LLM (Claude, OpenAI) avec streaming SSE
 
 ---
 
@@ -30,6 +32,11 @@ SpringForge est un générateur de projets Spring Boot enterprise-grade, constru
 | Pool connexions | HikariCP | intégré |
 | API docs | Springdoc OpenAPI | 2.x |
 | Mapping | MapStruct | 1.6.x |
+| Object Storage | MinIO (S3-compatible) | 8.5.13 |
+| Paiement | Stripe Java SDK | 26.1.0 |
+| LLM Client | Spring WebFlux (WebClient) | intégré |
+| MongoDB (optionnel) | Spring Data MongoDB | intégré |
+| Migrations MongoDB | Mongock | 5.x |
 
 ### 2.2 Frontend
 
@@ -44,7 +51,18 @@ SpringForge est un générateur de projets Spring Boot enterprise-grade, constru
 | Build | esbuild (via Angular CLI) | — |
 | Serveur | Nginx Alpine | — |
 
-### 2.3 Infrastructure
+### 2.3 Extension VS Code
+
+| Couche | Technologie | Version |
+|--------|-------------|---------|
+| Runtime | Node.js | 20+ |
+| Langage | TypeScript | 5.x |
+| Framework | VS Code Extension API | 1.85+ |
+| UI | Webview (HTML/CSS/JS) | — |
+| HTTP Client | fetch API | — |
+| Build | tsc | — |
+
+### 2.4 Infrastructure
 
 | Service | Image | Port |
 |---------|-------|------|
@@ -56,6 +74,7 @@ SpringForge est un générateur de projets Spring Boot enterprise-grade, constru
 | Zookeeper | confluentinc/cp-zookeeper:7.5.0 | 2181 |
 | Schema Registry | confluentinc/cp-schema-registry:7.5.0 | 8081 |
 | Keycloak | quay.io/keycloak/keycloak:23.0 | 8180 |
+| MinIO | minio/minio:latest | 9000/9001 |
 | Prometheus | prom/prometheus:latest | 9090 |
 | Grafana | grafana/grafana:latest | 3000 |
 
@@ -131,6 +150,26 @@ springforge-backend/src/main/java/com/springforge/
 │   ├── application/     # Use cases, validators
 │   ├── domain/          # Entités, statuts, pipeline
 │   └── infrastructure/  # Persistance JPA
+├── storage/             # Stockage objets (MinIO / FileSystem)
+│   ├── StorageService.java          # Interface abstraite
+│   ├── FileSystemStorageService.java # Implémentation locale (dev)
+│   ├── MinioStorageService.java      # Implémentation MinIO (prod)
+│   └── StorageCleanupScheduler.java  # Rétention 30 jours
+├── billing/             # Facturation Stripe
+│   ├── domain/          # Subscription, Invoice, Plans
+│   ├── infrastructure/  # Repositories JPA
+│   ├── application/     # BillingService (checkout, portal, webhooks)
+│   └── api/             # BillingController, StripeWebhookController
+├── ai/                  # Intégration LLM (Claude, OpenAI)
+│   ├── domain/          # LlmProvider, LlmRequest, LlmResponse, LlmService
+│   ├── infrastructure/  # ClaudeLlmService, OpenAiLlmService
+│   ├── application/     # AiAssistantService (review, suggest, generate)
+│   └── api/             # AiController (REST + SSE streaming)
+├── notification/        # Webhooks & Notifications
+│   ├── domain/          # WebhookConfig, DeliveryLog, EventType, Channel
+│   ├── infrastructure/  # WebhookConfigRepository, DeliveryLogRepository
+│   ├── application/     # NotificationService (dispatch, retry, HMAC)
+│   └── api/             # WebhookController (CRUD, test, deliveries)
 ├── user/                # Authentification (JWT, refresh tokens)
 ├── blueprint/           # Définitions d'architecture
 ├── template/            # Templates Freemarker
@@ -146,10 +185,30 @@ POST /api/v1/projects/generate → 202 Accepted + generationId
 Phase 1: VALIDATE    → JSON Schema, permissions, quotas
 Phase 2: RESOLVE     → Résolution dépendances, détection conflits
 Phase 3: GENERATE    → Rendu Freemarker, assemblage arborescence
-Phase 4: POST-PROCESS → Formatage code, vérification compilation, ZIP
+Phase 4: POST-PROCESS → Formatage code, vérification compilation, ZIP → Upload MinIO
 ```
 
 Exécution asynchrone via `@Async("generationExecutor")` avec ThreadPool (3 core, 5 max).
+
+### 3.3bis Stockage des artefacts (MinIO)
+
+Le ZIP généré est uploadé dans MinIO (S3-compatible) plutôt que conservé sur le filesystem :
+
+```
+POST-PROCESS → ZIP créé localement → Upload vers bucket `springforge-generations`
+                                    → Suppression fichier local
+                                    → objectKey stocké en base (generations.object_key)
+
+Download    → GET /api/v1/generations/{id}/download
+            → StorageService.download(objectKey)
+            → StreamingResponseBody vers le client
+```
+
+Configuration conditionnelle via `@ConditionalOnProperty(name = "storage.type")` :
+- `filesystem` (défaut, dev) : stockage dans `./generated-projects/`
+- `minio` (prod) : stockage S3-compatible avec URLs pré-signées
+
+Rétention : `StorageCleanupScheduler` supprime les fichiers > 30 jours (cron quotidien 3h).
 
 ### 3.3 Modèle de données
 
@@ -166,6 +225,8 @@ Exécution asynchrone via `@Async("generationExecutor")` avec ThreadPool (3 core
 | marketplace_blueprints | V7 | Blueprints communautaires |
 | admin_users, generation_stats | V8 | Administration |
 | organizations, org_members, api_keys | V9 | Multi-tenant |
+| subscriptions, invoices | V10 | Billing Stripe |
+| webhook_configs, webhook_events, delivery_logs | V11 | Notifications |
 
 ---
 
@@ -276,7 +337,7 @@ Panels : Request Rate, Response Time p95, Error Rate, Active Requests, JVM Heap,
 
 ### 7.2 Docker Compose Local (développement)
 
-9 services orchestrés : backend, frontend, PostgreSQL, Redis, Kafka, Zookeeper, Schema Registry, Keycloak, Prometheus, Grafana.
+10 services orchestrés : backend, frontend, PostgreSQL, Redis, MinIO, Kafka, Zookeeper, Schema Registry, Keycloak, Prometheus, Grafana.
 
 ```bash
 docker compose up -d
@@ -395,35 +456,57 @@ Les services Kafka et Keycloak sont optionnels en production :
 - `GET /api/v1/i18n/locales` — Locales supportées
 - `GET /api/v1/i18n/messages/{locale}` — Messages par locale
 
+### 9.7 Billing (Stripe)
+- `GET /api/v1/billing/subscription` — Abonnement courant de l'organisation
+- `POST /api/v1/billing/checkout` — Créer session Stripe Checkout
+- `POST /api/v1/billing/portal` — Ouvrir portail client Stripe
+- `GET /api/v1/billing/invoices` — Historique factures
+- `POST /api/v1/webhooks/stripe` — Réception événements Stripe (permitAll)
+
+### 9.8 Intelligence Artificielle (LLM)
+- `POST /api/v1/ai/review` — Code review IA du projet généré
+- `POST /api/v1/ai/suggest` — Suggestions d'amélioration architecture
+- `POST /api/v1/ai/generate` — Génération de code boilerplate
+- `POST /api/v1/ai/chat` — Chat assistant avec streaming SSE
+
+### 9.9 Webhooks & Notifications
+- `GET /api/v1/organizations/{orgId}/webhooks` — Lister webhooks configurés
+- `POST /api/v1/organizations/{orgId}/webhooks` — Créer webhook
+- `PUT /api/v1/organizations/{orgId}/webhooks/{id}` — Modifier webhook
+- `DELETE /api/v1/organizations/{orgId}/webhooks/{id}` — Supprimer webhook
+- `POST /api/v1/organizations/{orgId}/webhooks/{id}/test` — Tester un webhook
+- `GET /api/v1/organizations/{orgId}/webhooks/{id}/deliveries` — Historique envois (paginé)
+
 ---
 
 ## 10. Diagramme des dépendances inter-modules
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                 shared/security                      │
-│  (JWT, RateLimit, CORS, CSP, HSTS, LoginAttempt)    │
-└──────────────────────┬──────────────────────────────┘
-                       │ protège
-┌──────────────────────▼──────────────────────────────┐
-│               security/ + config/                    │
-│  (SecurityHeaders, InputSanitizer, Cache, DB, Gzip) │
-└──────────────────────┬──────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────┐
-│                  API Layer                           │
-│  (Controllers : Recommendation, Marketplace,        │
-│   Admin, Organization, I18n, Generator, Auth)       │
-└──────┬───────┬───────┬───────┬───────┬──────────────┘
-       │       │       │       │       │
-┌──────▼──┐ ┌──▼────┐ ┌▼─────┐ ┌▼────┐ ┌▼─────┐
-│recommend│ │market │ │admin │ │tenant│ │genera │
-│ation    │ │place  │ │      │ │      │ │tor   │
-└────┬────┘ └───┬───┘ └──┬───┘ └──┬───┘ └──┬───┘
-     │          │         │        │        │
-┌────▼──────────▼─────────▼────────▼────────▼─────┐
-│         PostgreSQL + Redis (+ Kafka optionnel)    │
-└──────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                       shared/security                             │
+│    (JWT, RateLimit, CORS, CSP, HSTS, LoginAttempt)               │
+└───────────────────────────┬──────────────────────────────────────┘
+                            │ protège
+┌───────────────────────────▼──────────────────────────────────────┐
+│                   security/ + config/                             │
+│    (SecurityHeaders, InputSanitizer, Cache, DB, Gzip)            │
+└───────────────────────────┬──────────────────────────────────────┘
+                            │
+┌───────────────────────────▼──────────────────────────────────────┐
+│                        API Layer                                  │
+│  (Controllers : Recommendation, Marketplace, Admin, Organization,│
+│   I18n, Generator, Auth, Billing, AI, Webhook)                   │
+└──┬──────┬───────┬───────┬──────┬──────┬──────┬──────┬───────────┘
+   │      │       │       │      │      │      │      │
+┌──▼──┐ ┌─▼───┐ ┌▼────┐ ┌▼───┐ ┌▼───┐ ┌▼───┐ ┌▼──┐ ┌▼──────────┐
+│reco │ │mark │ │admin│ │ten │ │gen │ │bill│ │ai │ │notification│
+│mend │ │etpl │ │     │ │ant │ │era │ │ing │ │   │ │            │
+└──┬──┘ └──┬──┘ └──┬──┘ └─┬──┘ └─┬──┘ └─┬──┘ └┬──┘ └─────┬─────┘
+   │       │       │      │      │      │     │         │
+┌──▼───────▼───────▼──────▼──────▼──────▼─────▼─────────▼─────────┐
+│  PostgreSQL + Redis + MinIO (+ Kafka optionnel)                   │
+│  + Stripe API + Claude/OpenAI API (externes)                     │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -446,3 +529,65 @@ Les services Kafka et Keycloak sont optionnels en production :
 | `infra/prometheus/prometheus.yml` | Scraping métriques Actuator |
 | `infra/k8s/*.yml` | 12 manifestes Kubernetes |
 | `infra/monitoring/*.yml` | ServiceMonitor, alertes, dashboards |
+| `springforge-vscode/` | Extension VS Code (TypeScript) |
+| `springforge-vscode/package.json` | Manifest extension, commandes, settings |
+| `springforge-vscode/src/extension.ts` | Point d'entrée, activation, status bar |
+| `springforge-vscode/src/client.ts` | Client HTTP vers l'API SpringForge |
+| `springforge-vscode/src/panel.ts` | Wizard multi-step webview |
+
+---
+
+## 12. Intégrations externes (P6)
+
+### 12.1 MinIO (Object Storage S3-compatible)
+
+| Paramètre | Valeur |
+|-----------|--------|
+| Bucket | `springforge-generations` |
+| Port API | 9000 |
+| Port Console | 9001 |
+| Rétention | 30 jours |
+| Implémentation | `MinioStorageService` (@ConditionalOnProperty) |
+| Fallback dev | `FileSystemStorageService` (matchIfMissing=true) |
+
+### 12.2 Stripe (Paiement)
+
+| Composant | Description |
+|-----------|-------------|
+| SDK | com.stripe:stripe-java:26.1.0 |
+| Checkout | Session de paiement hébergée Stripe |
+| Portal | Portail client pour gérer l'abonnement |
+| Webhooks | `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.deleted` |
+| Plans | FREE (0€), PRO (29€/mois), ENTERPRISE (99€/mois) |
+| Sécurité | Signature webhook vérifiée via Stripe SDK |
+
+### 12.3 LLM (Intelligence Artificielle)
+
+| Paramètre | Claude | OpenAI |
+|-----------|--------|--------|
+| Provider | `@ConditionalOnProperty(ai.provider=claude)` | `@ConditionalOnProperty(ai.provider=openai)` |
+| Client HTTP | Spring WebClient (non-bloquant) | Spring WebClient (non-bloquant) |
+| Streaming | SSE via Flux<String> | SSE via Flux<String> |
+| Modèle défaut | claude-sonnet-4-20250514 | gpt-4o |
+| Endpoints | /api/v1/ai/review, /suggest, /generate, /chat | Idem |
+
+### 12.4 Webhooks & Notifications
+
+| Composant | Description |
+|-----------|-------------|
+| Canaux | WEBHOOK (HTTP POST), SLACK (Incoming Webhook), EMAIL |
+| Événements | GENERATION_COMPLETED, GENERATION_FAILED, QUOTA_WARNING, QUOTA_EXCEEDED, SUBSCRIPTION_CHANGED, MEMBER_JOINED |
+| Retry | 3 tentatives, backoff exponentiel (2^attempt minutes) |
+| Signature | HMAC-SHA256 (`X-Webhook-Signature: sha256=...`) |
+| Dispatch | @Async (non-bloquant) |
+| Scheduler | Retry toutes les 60s (@Scheduled) |
+
+### 12.5 MongoDB (Support générateur)
+
+| Composant | Description |
+|-----------|-------------|
+| Templates | MongoConfig, MongoDocument, MongoRepository, MongockConfig, InitialMigration |
+| Dépendances auto | spring-boot-starter-data-mongodb, mongock, embedded-mongo (test) |
+| Docker | MongoDB 7 avec healthcheck |
+| Tests | Testcontainers MongoDB |
+| Détection | `hasMongoDB()` dans GenerateStep |
