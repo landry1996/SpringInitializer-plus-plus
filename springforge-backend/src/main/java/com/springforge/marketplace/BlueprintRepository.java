@@ -18,12 +18,12 @@ public interface BlueprintRepository extends JpaRepository<Blueprint, String> {
 
     Page<Blueprint> findByAuthor(String author, Pageable pageable);
 
-    @Query("SELECT b FROM Blueprint b WHERE b.published = true AND " +
+    @Query("SELECT b FROM MarketplaceBlueprint b WHERE b.published = true AND " +
            "(LOWER(b.name) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(b.description) LIKE LOWER(CONCAT('%', :query, '%')))")
     Page<Blueprint> search(@Param("query") String query, Pageable pageable);
 
-    @Query("SELECT b FROM Blueprint b WHERE b.published = true AND b.rating >= :minRating")
+    @Query("SELECT b FROM MarketplaceBlueprint b WHERE b.published = true AND b.rating >= :minRating")
     Page<Blueprint> findByMinRating(@Param("minRating") double minRating, Pageable pageable);
 
     List<Blueprint> findTop10ByPublishedTrueOrderByDownloadsDesc();

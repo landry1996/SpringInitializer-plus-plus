@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Arrays;
 import java.util.List;
 
-@RestController
+@RestController("marketplaceBlueprintController")
 @RequestMapping("/api/v1/marketplace/blueprints")
 public class BlueprintController {
 

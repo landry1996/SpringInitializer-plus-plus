@@ -44,7 +44,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/versions/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/dependencies/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/projects/validate").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/projects/generate").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/projects/generate").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/projects/preview").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/dependencies/check").permitAll()
                         .requestMatchers("/api/v1/marketplace/**").permitAll()
@@ -58,6 +58,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) ->
+                                response.sendError(401, "Unauthorized")))
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .headers(headers -> headers

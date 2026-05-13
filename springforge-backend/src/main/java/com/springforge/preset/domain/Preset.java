@@ -12,7 +12,7 @@ public class Preset extends BaseEntity {
 
     private String description;
 
-    @Column(name = "configuration", columnDefinition = "jsonb", nullable = false)
+    @Column(name = "configuration", columnDefinition = "TEXT", nullable = false)
     private String configuration;
 
     @Column(name = "owner_id", nullable = false)

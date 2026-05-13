@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Entity
-@Table(name = "blueprints")
+@Entity(name = "MarketplaceBlueprint")
+@Table(name = "marketplace_blueprints")
 public class Blueprint {
 
     @Id
