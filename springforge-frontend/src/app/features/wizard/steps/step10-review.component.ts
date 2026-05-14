@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { WizardStateService } from '../wizard-state.service';
 import { ApiService } from '../../../core/services/api.service';
 import { WebSocketService } from '../../../core/services/websocket.service';
+import { ArchitectureDiagramComponent } from './architecture-diagram.component';
 
 @Component({
   selector: 'app-step10-review',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ArchitectureDiagramComponent],
   template: `
     <h2>Review & Generate</h2>
     <div class="review-grid">
@@ -38,6 +39,10 @@ import { WebSocketService } from '../../../core/services/websocket.service';
         <p>Docker: {{ state().infrastructure.docker }} | Compose: {{ state().infrastructure.dockerCompose }} | CI: {{ state().infrastructure.ci }}</p>
       </div>
     </div>
+
+    @if (state().architecture.modules.length > 0) {
+      <app-architecture-diagram></app-architecture-diagram>
+    }
 
     @if (generationStatus() === 'idle') {
       <div class="action-buttons">
