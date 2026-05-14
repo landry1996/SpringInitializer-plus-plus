@@ -30,6 +30,8 @@ services:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       GENERATION_OUTPUT_DIR: /app/generated
+      GENERATION_THREAD_POOL_CORE: ${GENERATION_POOL_CORE:-5}
+      GENERATION_THREAD_POOL_MAX: ${GENERATION_POOL_MAX:-10}
       STORAGE_TYPE: ${STORAGE_TYPE:-filesystem}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_PRO_PRICE_ID: ${STRIPE_PRO_PRICE_ID:-}
@@ -50,9 +52,15 @@ services:
       redis:
         condition: service_started
     restart: unless-stopped
-    mem_limit: 1g
+    mem_limit: 1536m
     networks:
       - springforge-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   frontend:
     build: ./springforge-frontend
@@ -89,6 +97,11 @@ services:
     command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
     mem_limit: 192m
     networks:

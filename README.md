@@ -6,7 +6,10 @@ Generate production-ready Spring Boot projects in under 60 seconds via a 10-step
 
 ## Features
 
-- **4 Architecture Blueprints**: Hexagonal, Layered, DDD, Microservices
+- **8 Architecture Blueprints**: Monolithic, Layered, Hexagonal, DDD, CQRS, Event-Driven, Microservices, Modulith
+- **Advanced Microservices Configuration**: Per-service database selection (PostgreSQL, MySQL, MongoDB, Redis, Cassandra, Neo4j), inter-service communication mapping (REST/gRPC sync, Kafka/RabbitMQ async), resilience patterns (Circuit Breaker, Retry, Timeout, Bulkhead, Rate Limit), service discovery (Eureka/Consul), API Gateway with rate limiting, centralized configuration, distributed tracing
+- **Architecture-Specific Options**: DDD bounded contexts with context mapping, CQRS with separate read/write stores, Event-Driven with schema registry, Modulith with ArchUnit enforcement
+- **Architecture Diagram**: Auto-generated SVG visualization showing services, connections, and databases
 - **AI Recommendations**: Intelligent dependency suggestions, anti-pattern detection, compatibility scoring
 - **Blueprint Marketplace**: Community-driven templates with search, ratings, and versioning
 - **Multi-tenant SaaS**: Organization management, API keys, subscription plans (Free/Pro/Enterprise)
@@ -15,6 +18,7 @@ Generate production-ready Spring Boot projects in under 60 seconds via a 10-step
 - **Admin Panel**: User management, audit logs, analytics dashboard
 - **Internationalization**: 4 languages (EN, FR, DE, ES)
 - **IntelliJ Plugin**: Generate projects directly from your IDE
+- **VS Code Extension**: Architecture visualization and project generation
 - **CLI Tool**: Go-based CLI for terminal workflows
 
 ## Tech Stack
@@ -23,9 +27,9 @@ Generate production-ready Spring Boot projects in under 60 seconds via a 10-step
 |-------|-----------|
 | Runtime | Java 21 |
 | Framework | Spring Boot 3.3.5 |
-| Frontend | Angular 18 (Standalone Components) |
+| Frontend | Angular 18 (Standalone Components, Signals) |
 | CLI | Go + Cobra |
-| IDE | IntelliJ Platform Plugin |
+| IDE | IntelliJ Platform Plugin, VS Code Extension |
 | Database | PostgreSQL 16 |
 | Cache | Redis 7 |
 | Messaging | Apache Kafka |
@@ -67,11 +71,49 @@ npm start
 | Grafana | http://localhost:3000 |
 | Prometheus | http://localhost:9090 |
 
-### Production
+### Production (VPS)
 
 ```bash
-docker compose up -d --build
+git clone https://github.com/landry1996/SpringInitializer-plus-plus.git /opt/springforge
+cd /opt/springforge
+cp .env.example .env && nano .env
+chmod +x deploy.sh && ./deploy.sh init
 ```
+
+See [GUIDE_DEPLOIEMENT.md](GUIDE_DEPLOIEMENT.md) for complete VPS deployment instructions.
+
+## Wizard Steps
+
+The project creation wizard guides users through 10 steps:
+
+| Step | Name | Description |
+|------|------|-------------|
+| 1 | Metadata | Group ID, Artifact ID, project name, description |
+| 2 | Versions | Java version, Spring Boot version |
+| 3 | Build Tool | Maven, Gradle Groovy, Gradle Kotlin |
+| 4 | Architecture | Choose from 8 architecture types |
+| 5 | **Architecture Config** | Dynamic configuration per architecture type |
+| 6 | Dependencies | Spring Boot starters with AI suggestions |
+| 7 | Security | JWT, OAuth2, Keycloak with roles |
+| 8 | Infrastructure | Docker, Kubernetes, CI/CD |
+| 9 | Options | Examples, formatting, compilation check |
+| 10 | Review | Summary, architecture diagram, generate |
+
+### Microservices Configuration (Step 5)
+
+When selecting Microservices architecture, users can configure:
+
+- **Services**: Define each microservice (name, description, port)
+- **Databases per service**: PostgreSQL, MySQL, MongoDB, Redis, Cassandra, Neo4j — with purpose (Primary Store, Cache, Search, Event Store)
+- **Synchronous communication**: REST or gRPC connections between services
+- **Asynchronous communication**: Kafka or RabbitMQ with topics, event types, serialization format (JSON/Avro/Protobuf)
+- **Resilience patterns**: Circuit Breaker, Retry, Timeout, Bulkhead, Rate Limit per connection
+- **Service Discovery**: Eureka or Consul
+- **API Gateway**: Rate limiting, CORS, auth per route
+- **Centralized Config**: Spring Cloud Config Server with profiles
+- **Secret Management**: HashiCorp Vault, Environment Variables
+- **Orchestration**: Saga pattern (Choreography/Orchestration)
+- **Observability**: Zipkin/Jaeger tracing, Prometheus metrics, ELK/Loki logging
 
 ## API Endpoints
 
@@ -79,6 +121,7 @@ docker compose up -d --build
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | /api/v1/projects/generate | Start generation (returns 202) |
+| POST | /api/v1/projects/validate | Validate configuration |
 | POST | /api/v1/projects/preview | Preview project structure |
 | GET | /api/v1/generations/{id}/status | Check generation status |
 | GET | /api/v1/generations/{id}/download | Download generated ZIP |
@@ -122,22 +165,33 @@ docker compose up -d --build
 
 ```
 SpringForge/
-├── src/main/java/com/springforge/
-│   ├── config/          # Cache, Async, Database, OpenAPI configs
-│   ├── security/        # Rate limiting, CORS, CSP, input validation
-│   ├── recommendation/  # AI engine with pluggable rules
-│   ├── marketplace/     # Blueprint store with search/rating
-│   ├── admin/           # Dashboard, users, audit
-│   ├── tenant/          # Multi-tenant, API keys, quotas
-│   ├── i18n/            # Internationalization
-│   ├── generator/       # Generation pipeline
-│   └── shared/          # Common utilities
+├── springforge-backend/
+│   └── src/main/java/com/springforge/
+│       ├── config/          # Cache, Async, Database, OpenAPI configs
+│       ├── security/        # Rate limiting, CORS, CSP, input validation
+│       ├── recommendation/  # AI engine with pluggable rules
+│       ├── marketplace/     # Blueprint store with search/rating
+│       ├── admin/           # Dashboard, users, audit
+│       ├── tenant/          # Multi-tenant, API keys, quotas
+│       ├── i18n/            # Internationalization
+│       ├── generator/
+│       │   ├── domain/      # ProjectConfiguration (40+ DTOs for 8 architectures)
+│       │   ├── application/ # Pipeline steps, validators
+│       │   └── api/         # REST controllers
+│       └── shared/          # Common utilities
 ├── springforge-frontend/    # Angular 18 SPA
+│   └── src/app/features/wizard/
+│       ├── wizard-state.service.ts  # Reactive state with architecture configs
+│       └── steps/
+│           ├── step5-modules.component.ts  # Dynamic architecture config UI
+│           └── architecture-diagram.component.ts  # SVG visualization
 ├── springforge-cli/         # Go CLI (Cobra)
 ├── springforge-intellij-plugin/  # IntelliJ IDE plugin
+├── springforge-vscode/      # VS Code extension
 ├── infra/
 │   ├── k8s/             # Kubernetes manifests
 │   ├── monitoring/      # Grafana dashboards, alerts
+│   ├── nginx/           # Reverse proxy config
 │   └── prometheus/      # Prometheus config
 └── .github/workflows/   # CI/CD pipelines
 ```
@@ -147,6 +201,15 @@ SpringForge/
 ### Docker Compose (Development/Staging)
 ```bash
 docker compose up -d
+```
+
+### Docker Compose (Production VPS)
+```bash
+./deploy.sh init          # First deployment
+./deploy.sh ssl domain.com email@example.com  # Enable HTTPS
+./deploy.sh update        # Update to latest
+./deploy.sh backup        # Backup database
+./deploy.sh status        # Check health
 ```
 
 ### Kubernetes (Production)
@@ -170,7 +233,7 @@ kubectl apply -f infra/k8s/
 
 ```bash
 # Backend unit tests
-./mvnw test
+cd springforge-backend && ./mvnw test
 
 # Frontend unit tests
 cd springforge-frontend && npm test

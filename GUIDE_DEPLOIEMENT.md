@@ -37,10 +37,12 @@ Ce guide détaille pas à pas comment lancer SpringForge en local (développemen
 
 | Ressource | Minimum | Recommandé |
 |-----------|---------|------------|
-| RAM | 2 Go | 4 Go |
-| CPU | 1 vCPU | 2 vCPU |
-| Disque | 20 Go | 40 Go |
+| RAM | 4 Go | 8 Go |
+| CPU | 2 vCPU | 4 vCPU |
+| Disque | 40 Go | 80 Go |
 | Réseau | Port 80 et 443 ouverts | — |
+
+> **Note** : La génération de projets microservices avancés (multi-DB, Kafka, observabilité) nécessite plus de mémoire pour le processus de templating Freemarker. 4 Go est le minimum recommandé.
 
 ---
 
@@ -105,7 +107,14 @@ Ouvrez votre navigateur :
 
 1. Ouvrez http://localhost:4200
 2. Cliquez sur "Nouveau Projet" ou accédez au Wizard
-3. Suivez les 10 étapes pour configurer votre projet Spring Boot
+3. Suivez les 10 étapes pour configurer votre projet Spring Boot :
+   - **Architecture** (étape 4) : Choisissez parmi 8 types (Microservices, Hexagonal, DDD, CQRS, Event-Driven, Modulith, Layered, Monolithic)
+   - **Configuration Architecture** (étape 5) : Interface dynamique selon l'architecture choisie
+     - *Microservices* : Définissez vos services, choisissez une DB par service (PostgreSQL, MySQL, MongoDB, Redis, Cassandra, Neo4j), mappez les communications sync/async, configurez la résilience
+     - *DDD* : Définissez vos Bounded Contexts et leurs relations (Shared Kernel, ACL, Customer-Supplier...)
+     - *CQRS* : Choisissez les stores read/write séparément, configurez l'Event Store
+     - *Event-Driven* : Définissez les events, choisissez le broker (Kafka/RabbitMQ), le schema registry
+   - **Review** (étape 10) : Visualisez le diagramme d'architecture auto-généré avant de générer
 4. Cliquez sur "Générer" et téléchargez le ZIP
 
 ### Arrêter la stack locale
@@ -229,11 +238,33 @@ CORS_ORIGINS=https://votre-domaine.com
 # Répertoire de génération (laisser par défaut)
 GENERATION_OUTPUT_DIR=/app/generated
 
+# Pool de threads pour la génération de projets
+# Augmenter si beaucoup d'utilisateurs génèrent en parallèle
+GENERATION_POOL_CORE=5
+GENERATION_POOL_MAX=10
+
 # Kafka et Keycloak désactivés par défaut (économie de RAM)
 KAFKA_ENABLED=false
 SPRING_KAFKA_BOOTSTRAP_SERVERS=
 KEYCLOAK_ENABLED=false
 KEYCLOAK_ISSUER_URI=
+
+# Stripe (facturation SaaS — optionnel)
+STRIPE_SECRET_KEY=
+STRIPE_PRO_PRICE_ID=
+STRIPE_ENTERPRISE_PRICE_ID=
+
+# IA pour les recommandations (optionnel)
+AI_PROVIDER=claude
+ANTHROPIC_API_KEY=
+OPENAI_API_KEY=
+
+# Notifications email (optionnel)
+NOTIFICATION_EMAIL_ENABLED=false
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USERNAME=
+SMTP_PASSWORD=
 ```
 
 **Générer un JWT_SECRET sécurisé :**

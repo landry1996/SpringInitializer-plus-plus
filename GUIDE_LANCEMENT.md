@@ -34,10 +34,13 @@
 |-------|-----------------|
 | Ubuntu/Debian | 22.04+ |
 | RAM | 4 Go minimum (8 Go recommande) |
-| Disque | 20 Go minimum |
+| CPU | 2 vCPU minimum (4 vCPU recommande) |
+| Disque | 40 Go minimum (80 Go recommande) |
 | Docker | 24.0+ |
 | Docker Compose | 2.20+ |
 | Nom de domaine | Pointe vers l'IP du VPS (pour SSL) |
+
+> **Note** : La generation de projets microservices avances (avec multiple bases de donnees, messaging, observabilite) necessite plus de ressources. Augmenter `GENERATION_POOL_CORE` et `GENERATION_POOL_MAX` dans le `.env` si beaucoup d'utilisateurs generent en parallele.
 
 ---
 
@@ -268,6 +271,10 @@ CORS_ORIGINS=https://springforge.votredomaine.com
 
 # Chemin de generation (ne pas modifier)
 GENERATION_OUTPUT_DIR=/app/generated
+
+# Pool de threads pour la generation avancee (microservices multi-DB, etc.)
+GENERATION_POOL_CORE=5
+GENERATION_POOL_MAX=10
 
 # OPTIONNEL : Kafka (desactive par defaut)
 KAFKA_ENABLED=false
@@ -591,8 +598,12 @@ docker exec -it springforge-db psql -U springforge springforge \
 +-----v------+               +-------v-------+
 |  Backend   |               |   Frontend    |
 |  (Spring)  |               |   (Angular)   |
-|  1 Go RAM  |               |   128 Mo RAM  |
-+---+----+---+               +---------------+
+| 1.5 Go RAM |               |   128 Mo RAM  |
+| Generation:|               | Wizard 10 etapes
+| - 8 archs  |               | Config dynamique
+| - Multi-DB  |               | Diagramme SVG
+| - Templates |               +---------------+
++---+----+---+
     |    |
 +---v-+  +---v---+
 | PG  |  | Redis |
@@ -601,6 +612,12 @@ docker exec -it springforge-db psql -U springforge springforge \
 
   + Certbot (renouvellement SSL auto)
 ```
+
+**Fonctionnalites de generation** :
+- 8 architectures supportees (Microservices, Hexagonal, DDD, CQRS, Event-Driven, Modulith, Layered, Monolithic)
+- Generation microservices avec choix de DB par service (PostgreSQL, MySQL, MongoDB, Redis, Cassandra, Neo4j)
+- Communication inter-services (REST, gRPC, Kafka, RabbitMQ)
+- Resilience (Circuit Breaker, Retry, Timeout) et observabilite (Zipkin, Jaeger, Prometheus)
 
 ### Ports exposes en production
 
