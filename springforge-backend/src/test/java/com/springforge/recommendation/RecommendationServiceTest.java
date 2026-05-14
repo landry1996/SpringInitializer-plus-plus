@@ -67,7 +67,7 @@ class RecommendationServiceTest {
     private ProjectConfiguration createMinimalConfig() {
         return new ProjectConfiguration(
             new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
-            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false, null, null, null, null, null, null, null, null),
             List.of(),
             null, null, null, null, null, null, null
         );
@@ -76,7 +76,7 @@ class RecommendationServiceTest {
     private ProjectConfiguration createConfigWithWebAndJpa() {
         return new ProjectConfiguration(
             new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
-            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false, null, null, null, null, null, null, null, null),
             List.of("spring-boot-starter-web", "spring-boot-starter-data-jpa"),
             null, null, null, null, null, null, null
         );
@@ -85,7 +85,7 @@ class RecommendationServiceTest {
     private ProjectConfiguration createFullConfig() {
         return new ProjectConfiguration(
             new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
-            new ProjectConfiguration.Architecture("HEXAGONAL", List.of("user", "order"), false, false),
+            new ProjectConfiguration.Architecture("HEXAGONAL", List.of("user", "order"), false, false, null, null, null, null, null, null, null, null),
             List.of("spring-boot-starter-web"),
             new ProjectConfiguration.SecurityConfig("OAUTH2", List.of("USER", "ADMIN")),
             new ProjectConfiguration.InfrastructureConfig(true, true, true, true, "github-actions"),

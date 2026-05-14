@@ -67,7 +67,7 @@ class AntiPatternRuleTest {
     void shouldWarnTestingEnabledWithoutTestDeps() {
         ProjectConfiguration config = new ProjectConfiguration(
             new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
-            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false, null, null, null, null, null, null, null, null),
             List.of("spring-boot-starter-web"),
             null, null, null, null,
             new ProjectConfiguration.TestingConfig(true, true, false, false),
@@ -94,7 +94,7 @@ class AntiPatternRuleTest {
     private ProjectConfiguration configWith(List<String> deps) {
         return new ProjectConfiguration(
             new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
-            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false, null, null, null, null, null, null, null, null),
             deps, null, null, null, null, null, null, null
         );
     }

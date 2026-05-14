@@ -28,7 +28,7 @@ class SecurityRecommendationRuleTest {
     void shouldWarnWebAppWithoutSecurity() {
         ProjectConfiguration config = new ProjectConfiguration(
             new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
-            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false, null, null, null, null, null, null, null, null),
             List.of("spring-boot-starter-web"),
             null, null, null, null, null, null, null
         );
@@ -44,7 +44,7 @@ class SecurityRecommendationRuleTest {
     void shouldSuggestRateLimitingForWebApps() {
         ProjectConfiguration config = new ProjectConfiguration(
             new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
-            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false, null, null, null, null, null, null, null, null),
             List.of("spring-boot-starter-web"),
             new ProjectConfiguration.SecurityConfig("OAUTH2", List.of("USER", "ADMIN")),
             null, null, null, null, null, null
@@ -59,7 +59,7 @@ class SecurityRecommendationRuleTest {
     void shouldNotWarnWhenNoWebDependency() {
         ProjectConfiguration config = new ProjectConfiguration(
             new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
-            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false, null, null, null, null, null, null, null, null),
             List.of("spring-boot-starter-batch"),
             null, null, null, null, null, null, null
         );

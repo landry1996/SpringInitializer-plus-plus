@@ -41,7 +41,7 @@ class GeneratorControllerTest {
         var config = new ProjectConfiguration(
                 new ProjectConfiguration.Metadata("com.example", "demo-app", "Demo App", "A demo",
                         "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
-                new ProjectConfiguration.Architecture("HEXAGONAL", List.of("user", "order"), false, false),
+                new ProjectConfiguration.Architecture("HEXAGONAL", List.of("user", "order"), false, false, null, null, null, null, null, null, null, null),
                 List.of("spring-boot-starter-web"),
                 null, null, null, null, null, null, null
         );
@@ -59,7 +59,7 @@ class GeneratorControllerTest {
     void generate_withoutAuth_returns401() throws Exception {
         var config = new ProjectConfiguration(
                 new ProjectConfiguration.Metadata("com.example", "demo", "Demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
-                new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
+                new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false, null, null, null, null, null, null, null, null),
                 List.of(), null, null, null, null, null, null, null
         );
 

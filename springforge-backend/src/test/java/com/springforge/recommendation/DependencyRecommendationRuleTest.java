@@ -64,7 +64,7 @@ class DependencyRecommendationRuleTest {
     void shouldReturnEmptyForNullDependencies() {
         ProjectConfiguration config = new ProjectConfiguration(
             new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
-            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false, null, null, null, null, null, null, null, null),
             null, null, null, null, null, null, null, null
         );
 
@@ -75,7 +75,7 @@ class DependencyRecommendationRuleTest {
     private ProjectConfiguration configWith(List<String> deps) {
         return new ProjectConfiguration(
             new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
-            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false),
+            new ProjectConfiguration.Architecture("LAYERED", List.of(), false, false, null, null, null, null, null, null, null, null),
             deps, null, null, null, null, null, null, null
         );
     }

@@ -1,9 +1,11 @@
 package com.springforge.generator;
 
+import com.springforge.generator.application.ArchitectureConfigValidator;
 import com.springforge.generator.application.steps.ResolveStep;
 import com.springforge.generator.application.steps.ValidateStep;
 import com.springforge.generator.domain.BuildTool;
 import com.springforge.generator.domain.ProjectConfiguration;
+import com.springforge.generator.domain.ProjectConfiguration.*;
 import com.springforge.generator.domain.pipeline.GenerationContext;
 import com.springforge.generator.domain.pipeline.StepResult;
 import org.junit.jupiter.api.Test;
@@ -14,11 +16,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class GenerationPipelineTest {
 
+    private final ArchitectureConfigValidator archValidator = new ArchitectureConfigValidator();
+
     @Test
     void validateStep_withValidConfig_succeeds() {
         var config = validConfiguration();
         var context = new GenerationContext(config);
-        var validateStep = new ValidateStep();
+        var validateStep = new ValidateStep(archValidator);
 
         StepResult result = validateStep.execute(context);
 
@@ -27,11 +31,11 @@ class GenerationPipelineTest {
 
     @Test
     void validateStep_withMissingGroupId_fails() {
-        var meta = new ProjectConfiguration.Metadata(
+        var meta = new Metadata(
                 "", "my-app", "My App", "desc", "com.example.myapp", "21", "3.3.5", BuildTool.MAVEN);
         var config = new ProjectConfiguration(meta, architecture(), List.of(), null, null, null, null, null, null, null);
         var context = new GenerationContext(config);
-        var validateStep = new ValidateStep();
+        var validateStep = new ValidateStep(archValidator);
 
         StepResult result = validateStep.execute(context);
 
@@ -41,11 +45,11 @@ class GenerationPipelineTest {
 
     @Test
     void validateStep_withUnsupportedJavaVersion_fails() {
-        var meta = new ProjectConfiguration.Metadata(
+        var meta = new Metadata(
                 "com.example", "my-app", "My App", "desc", "com.example.myapp", "8", "3.3.5", BuildTool.MAVEN);
         var config = new ProjectConfiguration(meta, architecture(), List.of(), null, null, null, null, null, null, null);
         var context = new GenerationContext(config);
-        var validateStep = new ValidateStep();
+        var validateStep = new ValidateStep(archValidator);
 
         StepResult result = validateStep.execute(context);
 
@@ -71,7 +75,7 @@ class GenerationPipelineTest {
 
     @Test
     void resolveStep_addsSecurityDepsForJwt() {
-        var security = new ProjectConfiguration.SecurityConfig("JWT", List.of("ADMIN", "USER"));
+        var security = new SecurityConfig("JWT", List.of("ADMIN", "USER"));
         var config = new ProjectConfiguration(metadata(), architecture(), List.of("spring-boot-starter-web"), security, null, null, null, null, null, null);
         var context = new GenerationContext(config);
         var resolveStep = new ResolveStep();
@@ -101,13 +105,14 @@ class GenerationPipelineTest {
                 List.of("spring-boot-starter-web", "spring-boot-starter-data-jpa"), null, null, null, null, null, null, null);
     }
 
-    private ProjectConfiguration.Metadata metadata() {
-        return new ProjectConfiguration.Metadata(
+    private Metadata metadata() {
+        return new Metadata(
                 "com.example", "my-service", "My Service", "A test service",
                 "com.example.myservice", "21", "3.3.5", BuildTool.MAVEN);
     }
 
-    private ProjectConfiguration.Architecture architecture() {
-        return new ProjectConfiguration.Architecture("HEXAGONAL", List.of("user", "order"), false, false);
+    private Architecture architecture() {
+        return new Architecture("HEXAGONAL", List.of("user", "order"), false, false,
+                null, null, null, null, null, null, null, null);
     }
 }

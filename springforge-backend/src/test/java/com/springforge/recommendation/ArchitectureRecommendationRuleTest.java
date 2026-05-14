@@ -73,7 +73,7 @@ class ArchitectureRecommendationRuleTest {
     private ProjectConfiguration configWithArch(String archType) {
         return new ProjectConfiguration(
             new ProjectConfiguration.Metadata("com.example", "demo", "demo", "", "com.example.demo", "21", "3.3.5", BuildTool.MAVEN),
-            new ProjectConfiguration.Architecture(archType, List.of(), false, false),
+            new ProjectConfiguration.Architecture(archType, List.of(), false, false, null, null, null, null, null, null, null, null),
             List.of(), null, null, null, null, null, null, null
         );
     }
