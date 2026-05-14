@@ -37,19 +37,21 @@ Le wizard Angular guide l'utilisateur à travers la configuration complète d'un
 | 1 | Metadata | Nom du projet, description, group ID, artifact ID |
 | 2 | Versions | Version Java (11/17/21), version Spring Boot |
 | 3 | Build Tool | Maven ou Gradle (Groovy/Kotlin DSL) |
-| 4 | Architecture | Hexagonal, Layered, DDD, Microservices |
-| 5 | Modules | Sélection des modules fonctionnels |
+| 4 | Architecture | Choix parmi 8 types (Monolithic, Layered, Hexagonal, DDD, CQRS, Event-Driven, Microservices, Modulith) |
+| 5 | **Architecture Config** | Configuration dynamique selon l'architecture choisie (voir section 2.20) |
 | 6 | Dépendances | Catalogue avec recherche et filtres |
 | 7 | Sécurité | None, JWT, OAuth2 |
 | 8 | Infrastructure | Docker, CI/CD, Base de données |
 | 9 | Options | Paramètres avancés (profils, logging) |
-| 10 | Review | Récapitulatif + bouton Générer |
+| 10 | Review | Récapitulatif + **diagramme d'architecture auto-généré** + bouton Générer |
 
 **Caractéristiques UX :**
 - Progression visuelle avec barre de steps
 - Validation en temps réel à chaque étape
 - Navigation avant/arrière sans perte de données
 - Recommandations IA affichées en sidebar
+- Interface dynamique à l'étape 5 qui s'adapte au type d'architecture sélectionné
+- Diagramme SVG auto-généré à l'étape 10 montrant les services, connexions et bases de données
 
 ### 2.2 Moteur de recommandations IA
 
@@ -362,6 +364,98 @@ Automatisation de la publication des extensions IDE :
 | Open VSX Registry | springforge-vscode | `ovsx publish` (compatible Codium/Gitpod) |
 | JetBrains Marketplace | springforge-intellij-plugin | `gradlew publishPlugin` via GitHub Actions |
 
+### 2.20 Configuration avancée des architectures (Étape 5 du Wizard)
+
+L'étape 5 du wizard s'adapte dynamiquement selon l'architecture choisie à l'étape 4. Chaque architecture offre des options de configuration spécifiques :
+
+#### Microservices — Configuration multi-services complète
+
+| Onglet | Options |
+|--------|---------|
+| **Services** | Définition de chaque microservice (nom, description, port), ajout/suppression dynamique, choix de bases de données par service (PostgreSQL, MySQL, MongoDB, Redis, Cassandra, Neo4j) avec purpose (Primary Store, Cache, Search, Event Store) |
+| **Communication** | Synchrone (REST/gRPC) entre services, Asynchrone (Kafka/RabbitMQ) avec topics, types d'événements, format de sérialisation (JSON/Avro/Protobuf) |
+| **Résilience** | Circuit Breaker (seuil d'échec, durée ouverture), Retry (max tentatives, délai), Timeout (durée), Bulkhead (threads max), Rate Limit (requêtes par seconde) — configurable par service |
+| **Infrastructure** | Service Discovery (Eureka/Consul), API Gateway (rate limiting, CORS, auth par route), Config Server (profils dev/staging/prod), Secret Management (Vault/Env), Orchestration Saga (Choreography/Orchestration) |
+| **Observabilité** | Tracing distribué (Zipkin/Jaeger), Métriques (Prometheus), Logging centralisé (ELK/Loki) |
+
+#### DDD (Domain-Driven Design)
+
+| Option | Description |
+|--------|-------------|
+| Bounded Contexts | Définition de chaque contexte (nom, agrégats, événements domaine, repositories) |
+| Context Mapping | Relations entre contextes (Shared Kernel, Anti-Corruption Layer, Customer-Supplier, Conformist, Open Host) |
+| Shared Kernel | Module partagé entre contextes |
+| Anti-Corruption Layers | Couches de protection entre contextes |
+
+#### CQRS (Command Query Responsibility Segregation)
+
+| Option | Description |
+|--------|-------------|
+| Command Store | Type de base pour les écritures (PostgreSQL, MySQL, MongoDB) |
+| Query Store | Type de base pour les lectures (PostgreSQL, MongoDB, Elasticsearch) |
+| Event Store | Stockage des événements (PostgreSQL, EventStoreDB, Kafka) |
+| Modèles séparés | Activation de la séparation commandes/queries |
+| Event Replay | Capacité de rejouer les événements |
+| Projections | Définition des projections (nom, source, target) |
+
+#### Event-Driven
+
+| Option | Description |
+|--------|-------------|
+| Broker | Choix du message broker (Kafka/RabbitMQ) |
+| Events | Définition des événements (nom, topic, schéma) |
+| Schema Registry | Activation du registre de schémas (Avro/Protobuf/JSON Schema) |
+| Dead Letter Queue | Gestion des messages en erreur |
+| Ordering | Garantie d'ordre des messages |
+| Consumer Groups | Définition des groupes de consommateurs |
+
+#### Hexagonal (Ports & Adapters)
+
+| Option | Description |
+|--------|-------------|
+| Ports | Définition des ports (nom, type: inbound/outbound) |
+| Adapters | Choix des adaptateurs par port (REST, gRPC, JPA, Redis, Kafka...) |
+| Domain Modules | Organisation des modules domaine |
+| Domain Events | Activation des événements de domaine |
+
+#### Modulith (Monolithe Modulaire)
+
+| Option | Description |
+|--------|-------------|
+| Modules | Définition des modules (nom, packages exposés, packages internes, dépendances) |
+| ArchUnit Enforcement | Vérification des règles d'architecture au build |
+| Allowed Dependencies | Matrice des dépendances autorisées entre modules |
+| Event Publishing | Communication inter-modules par événements |
+
+#### Monolithic
+
+| Option | Description |
+|--------|-------------|
+| Packaging | JAR ou WAR |
+| Embedded Server | Tomcat, Jetty, ou Undertow |
+| Modules | Liste des modules fonctionnels |
+| Scheduling | Activation des tâches planifiées |
+| Caching | Activation du cache applicatif |
+
+#### Layered (Architecture en couches)
+
+| Option | Description |
+|--------|-------------|
+| Layers | Couches actives (Controller, Service, Repository, DTO, Mapper) |
+| Strict Layering | Interdit les accès cross-layer |
+| Validation | Activation de la validation Bean |
+| Swagger | Génération documentation OpenAPI |
+
+### 2.21 Diagramme d'architecture auto-généré
+
+À l'étape 10 (Review), un diagramme SVG est automatiquement généré représentant :
+- **Nœuds** : chaque service/module avec son nom et ses bases de données (badges colorés)
+- **Connexions synchrones** : traits pleins (REST/gRPC) avec label du protocole
+- **Connexions asynchrones** : traits en pointillés (Kafka/RabbitMQ) avec nom du topic
+- **Layout automatique** : positionnement intelligent des nœuds pour minimiser les croisements
+
+Le diagramme est interactif et se met à jour en temps réel quand la configuration change.
+
 ---
 
 ## 3. Parcours utilisateur
@@ -372,11 +466,13 @@ Automatisation de la publication des extensions IDE :
 1. Accès à springforge.io
 2. Création de compte (ou SSO via Keycloak)
 3. Dashboard → Bouton "Nouveau Projet"
-4. Wizard 10 étapes avec recommandations IA
-5. Review → Clic "Générer"
-6. Barre de progression temps réel (WebSocket)
-7. Téléchargement ZIP automatique
-8. Import dans IDE → Projet fonctionnel
+4. Wizard étapes 1-4 : metadata, versions, build tool, architecture
+5. Étape 5 : Configuration architecture (ex: définir 3 microservices avec leurs DB)
+6. Étapes 6-9 : dépendances, sécurité, infrastructure, options
+7. Étape 10 : Review avec diagramme d'architecture → Clic "Générer"
+8. Barre de progression temps réel (WebSocket)
+9. Téléchargement ZIP automatique
+10. Import dans IDE → Projet fonctionnel avec architecture complète
 ```
 
 ### 3.2 Parcours "Tech Lead — Publication blueprint"
@@ -449,6 +545,12 @@ Automatisation de la publication des extensions IDE :
 | RG-GEN-04 | Les dépendances incompatibles sont bloquées avec explication |
 | RG-GEN-05 | La génération est limitée par le quota du plan (5/50/illimité) |
 | RG-GEN-06 | Le ZIP généré doit compiler sans erreur |
+| RG-GEN-07 | Chaque microservice doit avoir au moins une base PRIMARY_STORE |
+| RG-GEN-08 | Les noms de services/modules/contextes doivent être uniques dans un projet |
+| RG-GEN-09 | Les ports de microservices doivent être uniques et dans la plage valide |
+| RG-GEN-10 | Les communications doivent référencer des services existants |
+| RG-GEN-11 | Au moins un agrégat est requis par bounded context (DDD) |
+| RG-GEN-12 | Les dépendances entre modules Modulith doivent être déclarées explicitement |
 
 ### 4.2 Marketplace
 
@@ -560,8 +662,9 @@ Automatisation de la publication des extensions IDE :
 ### 7.1 Mode minimal (VPS petit budget)
 
 Services requis : Backend + Frontend + PostgreSQL + Redis
-RAM minimale : 2 Go
+RAM minimale : 4 Go (recommandé 8 Go pour génération microservices avancés)
 Kafka et Keycloak désactivés.
+Pool de génération configurable via `GENERATION_POOL_CORE` / `GENERATION_POOL_MAX`.
 
 ### 7.2 Mode complet (développement local)
 

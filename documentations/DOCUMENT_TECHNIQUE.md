@@ -90,7 +90,7 @@ SpringForge est un générateur de projets Spring Boot enterprise-grade, constru
 springforge-backend/src/main/java/com/springforge/
 ├── shared/              # Module noyau partagé
 │   ├── config/
-│   │   ├── AsyncConfig.java            # Thread pool génération (3 core, 5 max)
+│   │   ├── AsyncConfig.java            # Thread pool génération (5 core, 10 max, configurable)
 │   │   ├── CorsConfig.java            # CORS configurable via env
 │   │   ├── FreemarkerConfig.java       # Configuration templates
 │   │   ├── OpenApiConfig.java          # Swagger/OpenAPI
@@ -147,10 +147,10 @@ springforge-backend/src/main/java/com/springforge/
 │   ├── LocaleConfig.java           # Resolver + MessageSource
 │   ├── I18nService.java            # Messages par locale
 │   └── I18nController.java         # API REST i18n
-├── generator/           # Pipeline de génération (25 fichiers)
+├── generator/           # Pipeline de génération (30+ fichiers)
 │   ├── api/             # Controller REST
-│   ├── application/     # Use cases, validators
-│   ├── domain/          # Entités, statuts, pipeline
+│   ├── application/     # Use cases, validators, ArchitectureConfigValidator
+│   ├── domain/          # Entités, statuts, pipeline, ProjectConfiguration (40+ DTOs)
 │   └── infrastructure/  # Persistance JPA
 ├── storage/             # Stockage objets (MinIO / FileSystem)
 │   ├── StorageService.java          # Interface abstraite
@@ -190,7 +190,70 @@ Phase 3: GENERATE    → Rendu Freemarker, assemblage arborescence
 Phase 4: POST-PROCESS → Formatage code, vérification compilation, ZIP → Upload MinIO
 ```
 
-Exécution asynchrone via `@Async("generationExecutor")` avec ThreadPool (3 core, 5 max).
+Exécution asynchrone via `@Async("generationExecutor")` avec ThreadPool configurable (défaut : 5 core, 10 max via `GENERATION_POOL_CORE` / `GENERATION_POOL_MAX`).
+
+### 3.2bis Configuration avancée des architectures (40+ DTOs)
+
+Le modèle `ProjectConfiguration.Architecture` supporte 8 types d'architecture avec une configuration dédiée par type :
+
+```java
+record Architecture(
+    String type,                    // MONOLITHIC | LAYERED | HEXAGONAL | DDD | CQRS | EVENT_DRIVEN | MICROSERVICES | MODULITH
+    List<String> modules,
+    boolean enableCQRS,
+    boolean enableEventSourcing,
+    MicroservicesConfig microservices,
+    MonolithicConfig monolithic,
+    LayeredConfig layered,
+    HexagonalConfig hexagonal,
+    DddConfig ddd,
+    CqrsConfig cqrs,
+    EventDrivenConfig eventDriven,
+    ModulithConfig modulith
+)
+```
+
+#### Configuration Microservices (MicroservicesConfig)
+
+| Record | Champs | Description |
+|--------|--------|-------------|
+| `MicroservicesConfig` | services, syncCommunications, asyncCommunications, resilience, discovery, gateway, orchestration, centralizedConfig, sharedModules, observability | Configuration complète multi-services |
+| `ServiceDefinition` | name, description, port, databases | Définition d'un microservice avec ses bases |
+| `DatabaseConfig` | type, purpose, name | Base par service (POSTGRESQL/MYSQL/MONGODB/REDIS/CASSANDRA/NEO4J) |
+| `SyncCommunication` | from, to, protocol, endpoint | Communication synchrone (REST/GRPC) |
+| `AsyncCommunication` | from, to, broker, topic, eventType, serialization | Communication asynchrone (KAFKA/RABBITMQ) |
+| `ResilienceConfig` | circuitBreaker, retry, timeout, bulkhead, rateLimit | Patterns de résilience par service |
+| `DiscoveryConfig` | type, dashboard | Service discovery (EUREKA/CONSUL) |
+| `GatewayConfig` | type, rateLimiting, corsEnabled, authEnabled, routes | API Gateway avec routing |
+| `OrchestrationConfig` | sagaEnabled, sagaType, sagas | Orchestration Saga (CHOREOGRAPHY/ORCHESTRATION) |
+| `CentralizedConfigConfig` | enabled, type, profiles | Config Server avec profils |
+| `MicroservicesObservabilityConfig` | tracing, tracingType, metrics, metricsType, logging, loggingType | Observabilité distribuée |
+
+#### Configuration des autres architectures
+
+| Architecture | Record | Champs principaux |
+|-------------|--------|-------------------|
+| Monolithic | `MonolithicConfig` | packaging (JAR/WAR), embeddedServer (TOMCAT/JETTY/UNDERTOW), modules, enableScheduling, enableCaching |
+| Layered | `LayeredConfig` | layers (CONTROLLER/SERVICE/REPOSITORY/DTO/MAPPER), strictLayering, enableValidation, enableSwagger |
+| Hexagonal | `HexagonalConfig` | ports, adapters, domainModules, enableDomainEvents, adapterAutoScan |
+| DDD | `DddConfig` | boundedContexts (name/aggregates/domainEvents/repositories), contextMapping, sharedKernel, anticorruptionLayers |
+| CQRS | `CqrsConfig` | commandStore, queryStore, eventStore, separateModels, enableEventReplay, projections |
+| Event-Driven | `EventDrivenConfig` | broker (KAFKA/RABBITMQ), events, schemaRegistry, enableDeadLetter, enableOrdering, consumerGroups |
+| Modulith | `ModulithConfig` | modules (name/exposedPackages/internalPackages/dependencies), enforceArchUnit, allowedDependencies, eventPublishing |
+
+#### Validation (ArchitectureConfigValidator)
+
+Le validateur assure la cohérence de chaque configuration :
+
+| Règle | Vérification |
+|-------|-------------|
+| Noms uniques | Pas de doublons dans les noms de services/contexts/modules |
+| Ports uniques | Chaque service a un port distinct |
+| PRIMARY_STORE requis | Au moins une base avec purpose PRIMARY_STORE par service |
+| Références valides | Les communications référencent des services existants |
+| Valeurs enum valides | Types de DB, protocoles, brokers conformes aux enums |
+| Bounded contexts (DDD) | Au moins un agrégat par contexte |
+| Modules (Modulith) | Au moins un module avec des packages exposés |
 
 ### 3.3bis Stockage des artefacts (MinIO)
 
@@ -290,7 +353,9 @@ Rétention : `StorageCleanupScheduler` supprime les fichiers > 30 jours (cron qu
 
 | Pool | Core | Max | Queue | Usage |
 |------|------|-----|-------|-------|
-| generationExecutor | 3 | 5 | 25 | Génération projets |
+| generationExecutor | 5 (configurable) | 10 (configurable) | 25 | Génération projets |
+
+Variables d'environnement : `GENERATION_POOL_CORE` et `GENERATION_POOL_MAX` pour ajuster selon la charge (microservices multi-DB nécessitent plus de threads).
 
 ### 5.4 Compression HTTP
 
@@ -360,7 +425,7 @@ cp .env.example .env  # Configurer les variables
 | Paramètre | Configuration |
 |-----------|--------------|
 | Reverse proxy | Nginx avec TLS Let's Encrypt (auto-renew) |
-| Backend | 1 Go RAM max, healthcheck Actuator |
+| Backend | 1.5 Go RAM max, healthcheck Actuator |
 | Frontend | 128 Mo RAM max, Nginx SPA routing |
 | PostgreSQL | 512 Mo RAM max, healthcheck pg_isready |
 | Redis | 192 Mo RAM max, LRU eviction 128 Mo |
@@ -417,6 +482,8 @@ Les services Kafka et Keycloak sont optionnels en production :
 | AI | 1 fichier (AiAssistantServiceTest) | Review, suggest, generate, stream |
 | Notification | 1 fichier (NotificationServiceTest) | Dispatch, retry, test webhook |
 | Storage | 1 fichier (StorageCleanupSchedulerTest) | Cleanup, skip null, continue on error |
+| Architecture | 1 fichier (ArchitectureConfigValidatorTest) | 11 tests : validation des 8 types d'architecture |
+| Generation Pipeline | 1 fichier (GenerationPipelineTest) | Pipeline complet avec configurations avancées |
 
 ### 8.2 Tests E2E (Playwright)
 
@@ -592,7 +659,21 @@ Les services Kafka et Keycloak sont optionnels en production :
 | Dispatch | @Async (non-bloquant) |
 | Scheduler | Retry toutes les 60s (@Scheduled) |
 
-### 12.5 MongoDB (Support générateur)
+### 12.5 Templates Freemarker — Microservices avancés
+
+| Template | Rôle |
+|----------|------|
+| `core/microservices/docker-compose.yml.ftl` | Docker Compose dynamique avec per-service DB (PostgreSQL, MySQL, MongoDB, Redis, Cassandra, Neo4j), broker (Kafka/RabbitMQ), observabilité (Zipkin/Jaeger/Prometheus/ELK/Loki) |
+| `core/microservices/service-pom.xml.ftl` | POM Maven par service avec dépendances dynamiques (DB driver, resilience4j, gRPC, etc.) |
+| `core/microservices/service-application.yml.ftl` | Configuration Spring par service (datasource, resilience4j, tracing) |
+| `core/microservices/ServiceApplication.java.ftl` | Classe main `@SpringBootApplication` par service |
+| `core/microservices/ResilienceConfig.java.ftl` | Configuration Resilience4j (Circuit Breaker, Retry, Timeout, Bulkhead, Rate Limiter) |
+| `core/microservices/parent-pom.xml.ftl` | POM parent multi-module avec tous les services |
+| `core/microservices/config-server-pom.xml.ftl` | POM du Config Server (Spring Cloud Config) |
+| `core/microservices/ConfigServerApplication.java.ftl` | Classe main Config Server |
+| `core/microservices/config-server-application.yml.ftl` | Configuration du Config Server |
+
+### 12.6 MongoDB (Support générateur)
 
 | Composant | Description |
 |-----------|-------------|
@@ -602,7 +683,7 @@ Les services Kafka et Keycloak sont optionnels en production :
 | Tests | Testcontainers MongoDB |
 | Détection | `hasMongoDB()` dans GenerateStep |
 
-### 12.6 MySQL (Support générateur)
+### 12.7 MySQL (Support générateur)
 
 | Composant | Description |
 |-----------|-------------|
@@ -612,7 +693,7 @@ Les services Kafka et Keycloak sont optionnels en production :
 | Config | Port 3306, dialect `MySQLDialect`, Flyway migrations |
 | Détection | `hasMySQL()` dans GenerateStep |
 
-### 12.7 Période d'essai PRO (Trial)
+### 12.8 Période d'essai PRO (Trial)
 
 | Composant | Description |
 |-----------|-------------|
@@ -623,7 +704,7 @@ Les services Kafka et Keycloak sont optionnels en production :
 | Frontend | Bannière trial avec compte à rebours + bouton "Subscribe Now" |
 | Repository | `findByTrialTrueAndTrialEndsAtBefore(LocalDateTime)` |
 
-### 12.8 Email Notifications (SMTP)
+### 12.9 Email Notifications (SMTP)
 
 | Composant | Description |
 |-----------|-------------|
@@ -634,7 +715,7 @@ Les services Kafka et Keycloak sont optionnels en production :
 | Intégration | Canal `EMAIL` dans `NotificationService.deliver()` |
 | Null-safe | `@Autowired(required = false)` — service absent si email désactivé |
 
-### 12.9 Publication Extensions (Marketplace)
+### 12.10 Publication Extensions (Marketplace)
 
 | Composant | Description |
 |-----------|-------------|

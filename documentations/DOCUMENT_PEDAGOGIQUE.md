@@ -12,10 +12,11 @@ Ce document pédagogique a pour objectif de permettre à tout développeur (juni
 
 Un générateur de projets automatise la création de la structure initiale d'une application. Au lieu de copier-coller un projet existant et de le modifier manuellement, SpringForge :
 
-1. **Collecte** les besoins via un wizard interactif
-2. **Analyse** la cohérence de la configuration (dépendances, architecture)
-3. **Génère** tous les fichiers nécessaires (code, config, tests, Docker, CI)
-4. **Livre** un projet prêt à compiler et déployer
+1. **Collecte** les besoins via un wizard interactif (10 étapes)
+2. **Configure** l'architecture en détail (8 types supportés avec options spécifiques)
+3. **Analyse** la cohérence de la configuration (dépendances, architecture, validations croisées)
+4. **Génère** tous les fichiers nécessaires (code, config, tests, Docker, CI)
+5. **Livre** un projet prêt à compiler et déployer
 
 **Analogie** : SpringForge est à un projet Spring Boot ce qu'un architecte est à une maison — il produit les plans complets et cohérents à partir des besoins exprimés.
 
@@ -67,7 +68,73 @@ Chaque module suit l'architecture hexagonale :
 
 **Bénéfice** : On peut changer la base de données sans toucher à la logique métier.
 
-### 1.4 Le pattern Rule Engine (Recommandations)
+### 1.4 Les 8 architectures supportées — Quand utiliser laquelle ?
+
+SpringForge permet de choisir parmi 8 types d'architecture. Voici un guide de décision :
+
+| Architecture | Cas d'usage | Complexité | Équipe |
+|-------------|-------------|-----------|--------|
+| **Monolithic** | Prototype, MVP, application simple | Basse | 1-3 devs |
+| **Layered** | CRUD classique, APIs standards | Basse-Moyenne | 2-5 devs |
+| **Hexagonal** | Domaine métier complexe, testabilité maximale | Moyenne | 3-8 devs |
+| **DDD** | Domaine métier très riche avec plusieurs contextes | Haute | 5-15 devs |
+| **CQRS** | Lectures et écritures avec besoins très différents | Haute | 5-10 devs |
+| **Event-Driven** | Événements asynchrones, découplage fort | Haute | 5-15 devs |
+| **Microservices** | Scaling indépendant, équipes autonomes, polyglotte | Très haute | 10+ devs |
+| **Modulith** | Structure microservices sans la complexité opérationnelle | Moyenne-Haute | 5-10 devs |
+
+#### Monolithic — Le point de départ
+
+Un seul déployable (JAR/WAR), tout le code dans un processus. Configuration SpringForge :
+- Choix packaging (JAR/WAR), serveur embarqué (Tomcat/Jetty/Undertow)
+- Modules fonctionnels, scheduling, caching
+
+#### Layered — La clarté des couches
+
+Séparation stricte Controller → Service → Repository. Configuration SpringForge :
+- Couches actives, strict layering (interdit les accès cross-layer)
+- Validation Bean, documentation Swagger auto-générée
+
+#### Hexagonal — L'indépendance du domaine
+
+Le code métier ne dépend de rien (pas de HTTP, pas de SQL). Configuration SpringForge :
+- Définition des ports (inbound/outbound) et choix des adaptateurs
+- Modules domaine indépendants, événements de domaine
+
+#### DDD — La modélisation stratégique
+
+Bounded Contexts avec relations explicites. Configuration SpringForge :
+- Définition de chaque contexte avec ses agrégats, événements et repositories
+- Context Mapping : Shared Kernel, ACL, Customer-Supplier, Conformist, Open Host
+
+#### CQRS — Séparer lectures et écritures
+
+Stores distincts optimisés pour chaque type d'opération. Configuration SpringForge :
+- Choix du Command Store, Query Store et Event Store (types de DB différents)
+- Projections, Event Replay, modèles séparés
+
+#### Event-Driven — La communication par événements
+
+Tout communique via des événements asynchrones. Configuration SpringForge :
+- Choix du broker (Kafka/RabbitMQ), définition des événements avec schémas
+- Dead Letter Queue, ordering, consumer groups, Schema Registry
+
+#### Microservices — L'indépendance maximale
+
+Chaque service est un déployable indépendant avec sa propre DB. Configuration SpringForge :
+- Définition de N services avec bases de données par service (6 types de DB supportés)
+- Communication sync (REST/gRPC) et async (Kafka/RabbitMQ) entre services
+- Résilience (Circuit Breaker, Retry, Timeout, Bulkhead, Rate Limit)
+- Infrastructure (Discovery, Gateway, Config Server, Observabilité)
+
+#### Modulith — Le meilleur des deux mondes
+
+Structure de microservices dans un monolithe. Configuration SpringForge :
+- Modules avec packages exposés/internes et dépendances déclarées
+- ArchUnit enforcement, communication par événements inter-modules
+
+### 1.5 Le pattern Rule Engine (Recommandations)
+
 
 Le moteur de recommandations utilise le pattern **Strategy/Rule** :
 
@@ -103,7 +170,7 @@ public class RecommendationService {
 
 **Bénéfice** : Pour ajouter une nouvelle règle, il suffit de créer une classe `@Component` implémentant `RecommendationRule`. Aucune modification du service existant (Open/Closed Principle).
 
-### 1.5 Le pattern Provider / ConditionalOnProperty
+### 1.6 Le pattern Provider / ConditionalOnProperty
 
 SpringForge utilise le pattern **Provider** pour basculer entre implémentations au runtime :
 
@@ -131,7 +198,7 @@ public class MinioStorageService implements StorageService { ... }
 
 **Bénéfice** : On change d'implémentation en modifiant UNE variable d'environnement, sans toucher au code. Le code appelant ne voit que l'interface.
 
-### 1.6 Event-Driven Notifications (Observer pattern distribué)
+### 1.7 Event-Driven Notifications (Observer pattern distribué)
 
 Le système de webhooks utilise un pattern Observer distribué :
 
@@ -153,7 +220,7 @@ Points clés :
 - **HMAC-SHA256** : signature du payload pour que le destinataire vérifie l'authenticité
 - **@Scheduled** : un scheduler relance les livraisons échouées toutes les 60s
 
-### 1.7 Multi-tenancy
+### 1.8 Multi-tenancy
 
 Le multi-tenant isole les données par organisation :
 
@@ -632,32 +699,119 @@ ai:
 
 #### Exemple : Ajouter un nouveau support de base de données au générateur
 
-**1. Créer les templates FreeMarker** dans `src/main/resources/templates/core/<db>/` :
+Il existe deux niveaux de support de base de données dans SpringForge :
 
+**Niveau 1 : DB comme dépendance globale du projet** (architectures non-microservices)
+
+**1. Créer les templates FreeMarker** dans `src/main/resources/templates/core/<db>/` :
 - `application-<db>.yml.ftl` : configuration datasource, dialect, migrations
 - `docker-compose-<db>.yml.ftl` : service Docker avec healthcheck
 
-**2. Ajouter la méthode de détection dans `GenerateStep`** :
+**2. Ajouter la méthode de détection dans `GenerateStep`** et brancher dans `generateApplicationYml()` et `generateDockerCompose()`.
+
+**Niveau 2 : DB par microservice** (architecture Microservices uniquement)
+
+Le système avancé permet de sélectionner une base de données différente par microservice. Les templates Freemarker dans `templates/core/microservices/` gèrent cela automatiquement :
+- `docker-compose.yml.ftl` : génère un service Docker par DB sélectionnée
+- `service-pom.xml.ftl` : ajoute les dépendances Maven correspondantes
+- `service-application.yml.ftl` : configure la datasource par service
+
+Types supportés : PostgreSQL, MySQL, MongoDB, Redis, Cassandra, Neo4j.
+
+Pour ajouter un nouveau type, voir l'exemple "Ajouter un nouveau type de base de données au système microservices" ci-dessous.
+
+#### Exemple : Ajouter un nouveau type de base de données au système microservices
+
+Le système de génération microservices supporte le choix de bases de données par service. Pour ajouter un nouveau type (ex: CockroachDB) :
+
+**1. Ajouter dans le modèle `ProjectConfiguration.java`** — L'enum de types est implicite via les validations :
 
 ```java
-private boolean hasMySQL(ProjectConfiguration config) {
-    return config.dependencies().stream()
-            .anyMatch(d -> d.artifactId().contains("mysql"));
+// Dans ArchitectureConfigValidator, ajouter "COCKROACHDB" à la liste validée :
+private static final Set<String> VALID_DB_TYPES = Set.of(
+    "POSTGRESQL", "MYSQL", "MONGODB", "REDIS", "CASSANDRA", "NEO4J", "COCKROACHDB"
+);
+```
+
+**2. Ajouter le support dans le template `docker-compose.yml.ftl`** :
+
+```freemarker
+<#if db.type == "COCKROACHDB">
+  ${serviceName}-cockroachdb:
+    image: cockroachdb/cockroach:latest
+    command: start-single-node --insecure
+    ports:
+      - "${port}:26257"
+    volumes:
+      - ${serviceName}-cockroachdb-data:/cockroach/cockroach-data
+</#if>
+```
+
+**3. Ajouter les dépendances dans `service-pom.xml.ftl`** :
+
+```freemarker
+<#if db.type == "COCKROACHDB">
+    <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+    </dependency>
+</#if>
+```
+
+**4. Ajouter la config dans `service-application.yml.ftl`** :
+
+```freemarker
+<#if db.type == "COCKROACHDB">
+spring:
+  datasource:
+    url: jdbc:postgresql://${serviceName}-cockroachdb:26257/defaultdb?sslmode=disable
+    driver-class-name: org.postgresql.Driver
+</#if>
+```
+
+**5. Mettre à jour le frontend** — Dans `step5-modules.component.ts`, ajouter l'option dans le select des types de DB.
+
+**Principe** : Le système est extensible par design — chaque template vérifie le type de DB et génère le code approprié.
+
+#### Exemple : Ajouter une nouvelle architecture
+
+Pour ajouter une 9ème architecture (ex: "Clean Architecture") :
+
+**1. Backend — Ajouter le record de config** dans `ProjectConfiguration.java` :
+
+```java
+public record CleanArchitectureConfig(
+    List<String> useCases,
+    List<String> entities,
+    boolean enablePresenter,
+    String gatewayType
+) {}
+```
+
+Et l'ajouter au record `Architecture` (13ème paramètre).
+
+**2. Backend — Ajouter la validation** dans `ArchitectureConfigValidator` :
+
+```java
+private List<String> validateCleanArchitecture(CleanArchitectureConfig config) {
+    // Vérifier qu'il y a au moins un use case, etc.
 }
 ```
 
-**3. Brancher dans `generateApplicationYml()` et `generateDockerCompose()`** :
+**3. Frontend — Ajouter l'interface TypeScript** dans `wizard-state.service.ts` :
 
-```java
-} else if (hasMySQL(config)) {
-    dbModel.put("type", "mysql");
-    dbModel.put("port", "3306");
-    dbModel.put("driver", "com.mysql.cj.jdbc.Driver");
-    dbModel.put("dialect", "org.hibernate.dialect.MySQLDialect");
+```typescript
+export interface CleanArchitectureConfig {
+  useCases: string[];
+  entities: string[];
+  enablePresenter: boolean;
+  gatewayType: 'JPA' | 'MONGO' | 'REST';
 }
 ```
 
-**4. C'est tout !** Le pipeline détecte automatiquement le type de DB par les dépendances sélectionnées et génère les fichiers appropriés.
+**4. Frontend — Ajouter le formulaire** dans `step5-modules.component.ts` (nouveau `@case`).
+
+**5. Backend — Ajouter le template de génération** dans `src/main/resources/templates/core/clean-architecture/`.
 
 #### Exemple : Implémenter une période d'essai (Trial)
 
@@ -747,6 +901,9 @@ generation.completed=Projeto gerado com sucesso
 | **Async Fire-and-Forget** | NotificationService.dispatch() | Non-bloquant pour l'action principale |
 | **Streaming** | AiController (SSE) | Réponses LLM en flux continu |
 | **Adapter** | Stripe SDK, MinIO SDK | Encapsulation APIs tierces |
+| **Dynamic Component** | step5-modules (@switch) | UI adaptative selon le type d'architecture |
+| **Validator** | ArchitectureConfigValidator | Validation croisée des configurations |
+| **Record/DTO Tree** | ProjectConfiguration (40+ records) | Modélisation hiérarchique immuable |
 
 ### 3.2 Strategy Pattern — En détail
 
@@ -863,7 +1020,58 @@ public void retryFailedDeliveries() {
 }
 ```
 
-### 3.7 ThreadLocal Pattern — Multi-tenant
+### 3.7 Dynamic Component Pattern — Configuration d'architecture
+
+L'étape 5 du wizard utilise un pattern de composant dynamique via `@switch` Angular :
+
+```typescript
+@switch (architectureType()) {
+  @case ('MICROSERVICES') {
+    // Formulaire avec 5 onglets : Services, Communication, Résilience, Infra, Observabilité
+  }
+  @case ('DDD') {
+    // Formulaire bounded contexts + context mapping
+  }
+  @case ('CQRS') {
+    // Formulaire command/query/event stores
+  }
+  // ... 8 cas au total
+}
+```
+
+**Pourquoi ce pattern ?** Chaque architecture a une UI totalement différente. Plutôt que de masquer/afficher des éléments avec `*ngIf`, le `@switch` rend le code plus lisible et chaque cas est indépendant.
+
+**State management** : Le `WizardStateService` utilise des Signals Angular pour gérer l'état réactif. La configuration d'architecture est nullable — seul le champ correspondant au type sélectionné est rempli :
+
+```typescript
+architecture: {
+  type: 'MICROSERVICES',
+  microservices: { ... },  // ← rempli
+  ddd: null,               // ← null car pas sélectionné
+  cqrs: null,
+  // ...
+}
+```
+
+### 3.8 SVG Generation Pattern — Diagramme d'architecture
+
+Le composant `ArchitectureDiagramComponent` génère un SVG dynamique à partir de la configuration :
+
+```
+Configuration → Extraction des nœuds → Calcul des positions → Rendu SVG
+                                                                    ↓
+                                                      ┌─── Nœuds (rectangles + badges DB)
+                                                      ├─── Connexions sync (lignes pleines)
+                                                      └─── Connexions async (lignes pointillées)
+```
+
+**Algorithme de layout** :
+1. Les nœuds sont disposés en grille avec espacement régulier
+2. Les connexions sont tracées entre les centres des nœuds
+3. Les badges de bases de données sont empilés sous chaque nœud
+4. Les couleurs distinguent les types (sync = bleu, async = orange, DB = par type)
+
+### 3.9 ThreadLocal Pattern — Multi-tenant
 
 ```java
 public class TenantContextHolder {
@@ -1120,27 +1328,29 @@ services:
 ```yaml
 services:
   nginx:      → reverse proxy HTTPS (Let's Encrypt) → route vers backend/frontend
-  backend:    → dépend de postgres, redis (Kafka/Keycloak optionnels)
-  frontend:   → sert l'Angular SPA via Nginx interne
-  postgres:   → base de données avec healthcheck
-  redis:      → cache avec limite mémoire 128 Mo
+  backend:    → 1.5 Go RAM max, dépend de postgres, redis (Kafka/Keycloak optionnels)
+  frontend:   → 128 Mo RAM max, sert l'Angular SPA via Nginx interne
+  postgres:   → 512 Mo RAM max, base de données avec healthcheck
+  redis:      → 192 Mo RAM max, cache avec limite mémoire 128 Mo
   certbot:    → renouvellement automatique certificats SSL
 ```
 
 **Pourquoi deux fichiers ?**
 - En dev : on veut TOUT (Kafka, Keycloak, monitoring) pour tester
-- En prod sur VPS 2 Go : on garde le minimum pour économiser la RAM
+- En prod sur VPS 4 Go+ : on garde le minimum pour économiser la RAM
 - Kafka et Keycloak sont désactivés via variables d'environnement
+- Le pool de génération est configurable (`GENERATION_POOL_CORE` / `GENERATION_POOL_MAX`) pour les architectures microservices complexes
 
 ### 6.3 Script de déploiement VPS (deploy.sh)
 
 ```bash
-./deploy.sh init    # Premier lancement (build + start)
-./deploy.sh update  # Mise à jour (git pull + rebuild + restart)
+./deploy.sh init    # Premier lancement (build + start + health check)
+./deploy.sh update  # Mise à jour (git pull + rebuild + restart avec health check)
 ./deploy.sh ssl     # Activer HTTPS avec Let's Encrypt
-./deploy.sh status  # Vérifier que tout tourne
+./deploy.sh status  # Vérifier état, santé, ressources et disque
 ./deploy.sh logs    # Voir les logs en temps réel
-./deploy.sh backup  # Sauvegarder PostgreSQL
+./deploy.sh backup  # Sauvegarder PostgreSQL (rotation 7 dernières)
+./deploy.sh cleanup # Nettoyer projets générés > 30 jours + images Docker
 ./deploy.sh stop    # Arrêter tout
 ```
 
@@ -1282,3 +1492,15 @@ ci:       configuration CI/CD
 | **VSCE** | VS Code Extension CLI — outil pour packager et publier des extensions VS Code |
 | **Open VSX** | Registry open-source alternatif au VS Code Marketplace (utilisé par Codium, Gitpod) |
 | **Gradle IntelliJ Plugin** | Plugin Gradle pour builder et publier des plugins JetBrains |
+| **Bounded Context** | (DDD) Frontière linguistique et technique autour d'un sous-domaine métier |
+| **Context Mapping** | (DDD) Cartographie des relations entre Bounded Contexts (ACL, Shared Kernel...) |
+| **Circuit Breaker** | Pattern de résilience qui coupe le circuit après N échecs consécutifs |
+| **Bulkhead** | Pattern de résilience qui isole les ressources pour éviter la propagation de pannes |
+| **Saga** | Pattern d'orchestration de transactions distribuées sur plusieurs services |
+| **Service Discovery** | Mécanisme permettant aux services de se trouver dynamiquement (Eureka/Consul) |
+| **API Gateway** | Point d'entrée unique pour tous les microservices (routing, auth, rate limit) |
+| **Config Server** | Service centralisant la configuration de tous les microservices |
+| **gRPC** | Framework RPC haute performance utilisant Protocol Buffers (alternative à REST) |
+| **Resilience4j** | Bibliothèque Java de résilience (Circuit Breaker, Retry, Rate Limiter...) |
+| **ArchUnit** | Framework de test vérifiant les règles d'architecture au build |
+| **Modulith** | Architecture monolithique structurée en modules indépendants avec frontières claires |
