@@ -1,5 +1,6 @@
 package com.springforge.generator.application.steps;
 
+import com.springforge.generator.application.ArchitectureConfigValidator;
 import com.springforge.generator.domain.ProjectConfiguration;
 import com.springforge.generator.domain.pipeline.GenerationContext;
 import com.springforge.generator.domain.pipeline.PipelineStep;
@@ -18,6 +19,12 @@ public class ValidateStep implements PipelineStep {
     private static final Set<String> SUPPORTED_JAVA_VERSIONS = Set.of(
             "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25");
     private static final Set<String> SUPPORTED_SPRING_BOOT_PREFIXES = Set.of("2.5", "2.6", "2.7", "3.0", "3.1", "3.2", "3.3", "3.4", "4.0");
+
+    private final ArchitectureConfigValidator architectureValidator;
+
+    public ValidateStep(ArchitectureConfigValidator architectureValidator) {
+        this.architectureValidator = architectureValidator;
+    }
 
     @Override
     public StepResult execute(GenerationContext context) {
@@ -57,6 +64,8 @@ public class ValidateStep implements PipelineStep {
 
         if (config.architecture() == null || config.architecture().type() == null) {
             errors.add("Architecture type is required");
+        } else {
+            errors.addAll(architectureValidator.validate(config));
         }
 
         return errors.isEmpty() ? StepResult.ok() : StepResult.failed(errors);
