@@ -501,13 +501,125 @@ public class GenerateStep implements PipelineStep {
 
     private void generateMicroservicesScaffold(Path projectDir, ProjectConfiguration config, Map<String, Object> model) throws Exception {
         String packageName = (String) model.get("packageName");
-        List<Map<String, String>> services = new ArrayList<>();
-        for (String module : config.architecture().modules()) {
-            services.add(Map.of("name", module));
+        var msConfig = config.architecture().microservices();
+
+        List<Map<String, Object>> services = new ArrayList<>();
+        List<String> serviceNames;
+
+        if (msConfig != null && msConfig.services() != null && !msConfig.services().isEmpty()) {
+            serviceNames = msConfig.services().stream().map(ProjectConfiguration.ServiceDefinition::name).toList();
+            for (var svc : msConfig.services()) {
+                Map<String, Object> svcInfo = new HashMap<>();
+                svcInfo.put("name", svc.name());
+                svcInfo.put("description", svc.description() != null ? svc.description() : "");
+                svcInfo.put("port", svc.port() > 0 ? svc.port() : 8080 + services.size() + 1);
+                if (svc.databases() != null) {
+                    svcInfo.put("databases", svc.databases().stream().map(db -> {
+                        Map<String, Object> dbMap = new HashMap<>();
+                        dbMap.put("type", db.type());
+                        dbMap.put("purpose", db.purpose());
+                        dbMap.put("generateEntity", db.generateEntity());
+                        return dbMap;
+                    }).toList());
+                }
+                services.add(svcInfo);
+            }
+        } else {
+            serviceNames = config.architecture().modules() != null ? config.architecture().modules() : List.of();
+            for (String module : serviceNames) {
+                services.add(Map.of("name", module, "port", 8080 + services.size() + 1));
+            }
         }
+
         Map<String, Object> msModel = new HashMap<>(model);
         msModel.put("services", services);
+        msModel.put("serviceNames", serviceNames);
 
+        if (msConfig != null) {
+            msModel.put("discoveryType", msConfig.discovery() != null ? msConfig.discovery().type() : "EUREKA");
+
+            if (msConfig.syncCommunications() != null) {
+                msModel.put("syncCommunications", msConfig.syncCommunications().stream().map(c -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("protocol", c.protocol());
+                    m.put("source", c.source());
+                    m.put("target", c.target());
+                    m.put("loadBalancing", c.loadBalancing());
+                    return m;
+                }).toList());
+            }
+
+            if (msConfig.asyncCommunications() != null) {
+                msModel.put("asyncCommunications", msConfig.asyncCommunications().stream().map(c -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("broker", c.broker());
+                    m.put("source", c.source());
+                    m.put("target", c.target());
+                    m.put("topic", c.topic());
+                    m.put("eventType", c.eventType());
+                    m.put("serialization", c.serialization());
+                    return m;
+                }).toList());
+            }
+
+            if (msConfig.resilience() != null) {
+                msModel.put("resilience", msConfig.resilience().stream().map(r -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("source", r.source());
+                    m.put("target", r.target());
+                    if (r.circuitBreaker() != null) m.put("circuitBreaker", Map.of(
+                            "enabled", r.circuitBreaker().enabled(),
+                            "failureThreshold", r.circuitBreaker().failureThreshold(),
+                            "waitDurationSeconds", r.circuitBreaker().waitDurationSeconds(),
+                            "slidingWindowSize", r.circuitBreaker().slidingWindowSize()));
+                    if (r.retry() != null) m.put("retry", Map.of(
+                            "enabled", r.retry().enabled(),
+                            "maxAttempts", r.retry().maxAttempts(),
+                            "backoffDelayMs", r.retry().backoffDelayMs()));
+                    if (r.timeout() != null) m.put("timeout", Map.of(
+                            "enabled", r.timeout().enabled(),
+                            "durationMs", r.timeout().durationMs()));
+                    return m;
+                }).toList());
+            }
+
+            if (msConfig.gateway() != null) {
+                Map<String, Object> gwModel = new HashMap<>();
+                if (msConfig.gateway().rateLimiting() != null) {
+                    gwModel.put("rateLimiting", Map.of(
+                            "enabled", msConfig.gateway().rateLimiting().enabled(),
+                            "replenishRate", msConfig.gateway().rateLimiting().replenishRate(),
+                            "burstCapacity", msConfig.gateway().rateLimiting().burstCapacity()));
+                }
+                if (msConfig.gateway().cors() != null) {
+                    gwModel.put("cors", Map.of(
+                            "allowedOrigins", msConfig.gateway().cors().allowedOrigins(),
+                            "allowedMethods", msConfig.gateway().cors().allowedMethods()));
+                }
+                msModel.put("gateway", gwModel);
+            }
+
+            if (msConfig.centralizedConfig() != null) {
+                msModel.put("configServer", msConfig.centralizedConfig().configServer());
+                msModel.put("profiles", msConfig.centralizedConfig().profiles());
+                msModel.put("secretManagement", msConfig.centralizedConfig().secretManagement());
+            }
+
+            if (msConfig.orchestration() != null && !"NONE".equals(msConfig.orchestration().sagaPattern())) {
+                msModel.put("sagaPattern", msConfig.orchestration().sagaPattern());
+            }
+
+            if (msConfig.observability() != null) {
+                msModel.put("msObservability", Map.of(
+                        "distributedTracing", msConfig.observability().distributedTracing() != null ? msConfig.observability().distributedTracing() : "NONE",
+                        "metricsExporter", msConfig.observability().metricsExporter() != null ? msConfig.observability().metricsExporter() : "NONE",
+                        "centralizedLogging", msConfig.observability().centralizedLogging() != null ? msConfig.observability().centralizedLogging() : "NONE",
+                        "correlationHeaders", msConfig.observability().correlationHeaders()));
+            }
+        }
+
+        // Service Registry
+        String discoveryType = (String) msModel.getOrDefault("discoveryType", "EUREKA");
         Path registryDir = projectDir.resolve("service-registry");
         Files.createDirectories(registryDir);
         Path registryPkg = registryDir.resolve("src/main/java/" + packageName.replace(".", "/") + "/registry");
@@ -521,6 +633,7 @@ public class GenerateStep implements PipelineStep {
         Files.writeString(registryRes.resolve("application.yml"),
                 renderTemplate("core/microservices/service-registry-application.yml.ftl", msModel));
 
+        // API Gateway
         Path gatewayDir = projectDir.resolve("api-gateway");
         Files.createDirectories(gatewayDir);
         Path gatewayPkg = gatewayDir.resolve("src/main/java/" + packageName.replace(".", "/") + "/gateway");
@@ -534,21 +647,67 @@ public class GenerateStep implements PipelineStep {
         Files.writeString(gatewayRes.resolve("application.yml"),
                 renderTemplate("core/microservices/api-gateway-application.yml.ftl", msModel));
 
-        for (String module : config.architecture().modules()) {
+        // Config Server (if enabled)
+        if (msConfig != null && msConfig.centralizedConfig() != null && msConfig.centralizedConfig().configServer()) {
+            Path configDir = projectDir.resolve("config-server");
+            Files.createDirectories(configDir);
+            Path configPkg = configDir.resolve("src/main/java/" + packageName.replace(".", "/") + "/config");
+            Path configRes = configDir.resolve("src/main/resources");
+            Files.createDirectories(configPkg);
+            Files.createDirectories(configRes);
+            Files.writeString(configDir.resolve("pom.xml"),
+                    renderTemplate("core/microservices/config-server-pom.xml.ftl", msModel));
+            Files.writeString(configPkg.resolve("ConfigServerApplication.java"),
+                    renderTemplate("core/microservices/ConfigServerApplication.java.ftl", msModel));
+            Files.writeString(configRes.resolve("application.yml"),
+                    renderTemplate("core/microservices/config-server-application.yml.ftl", msModel));
+        }
+
+        // Individual services
+        for (Map<String, Object> svcInfo : services) {
+            String serviceName = (String) svcInfo.get("name");
             Map<String, Object> svcModel = new HashMap<>(msModel);
-            svcModel.put("serviceName", module);
-            Path svcDir = projectDir.resolve(module);
+            svcModel.put("serviceName", serviceName);
+            svcModel.put("servicePort", svcInfo.get("port"));
+            svcModel.put("serviceDatabases", svcInfo.getOrDefault("databases", List.of()));
+
+            Path svcDir = projectDir.resolve(serviceName);
             Files.createDirectories(svcDir);
+            Path svcPkg = svcDir.resolve("src/main/java/" + packageName.replace(".", "/") + "/" + serviceName.replace("-", ""));
             Path svcRes = svcDir.resolve("src/main/resources");
+            Files.createDirectories(svcPkg);
             Files.createDirectories(svcRes);
+
             Files.writeString(svcDir.resolve("pom.xml"),
                     renderTemplate("core/microservices/service-pom.xml.ftl", svcModel));
             Files.writeString(svcRes.resolve("application.yml"),
                     renderTemplate("core/microservices/service-application.yml.ftl", svcModel));
+            Files.writeString(svcPkg.resolve(toPascalCase(serviceName) + "Application.java"),
+                    renderTemplate("core/microservices/ServiceApplication.java.ftl", svcModel));
+
+            // Generate resilience config if needed for this service
+            if (msConfig != null && msConfig.resilience() != null) {
+                boolean hasResilience = msConfig.resilience().stream()
+                        .anyMatch(r -> serviceName.equals(r.source()) &&
+                                (r.circuitBreaker() != null && r.circuitBreaker().enabled() ||
+                                 r.retry() != null && r.retry().enabled() ||
+                                 r.timeout() != null && r.timeout().enabled()));
+                if (hasResilience) {
+                    Path resilienceDir = svcPkg.resolve("config");
+                    Files.createDirectories(resilienceDir);
+                    Files.writeString(resilienceDir.resolve("ResilienceConfig.java"),
+                            renderTemplate("core/microservices/ResilienceConfig.java.ftl", svcModel));
+                }
+            }
         }
 
+        // Docker Compose with per-service databases
         Files.writeString(projectDir.resolve("docker-compose.yml"),
                 renderTemplate("core/microservices/docker-compose.yml.ftl", msModel));
+
+        // Parent POM
+        Files.writeString(projectDir.resolve("pom.xml"),
+                renderTemplate("core/microservices/parent-pom.xml.ftl", msModel));
     }
 
     private void generateKafkaConfig(Path projectDir, Map<String, Object> model, ProjectConfiguration config) throws Exception {
