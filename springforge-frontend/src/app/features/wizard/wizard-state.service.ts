@@ -1,10 +1,164 @@
 import { Injectable, signal, computed } from '@angular/core';
 
+export interface DatabaseConfig {
+  type: string;
+  purpose: string;
+  generateEntity: boolean;
+}
+
+export interface ServiceDefinition {
+  name: string;
+  description: string;
+  port: number;
+  databases: DatabaseConfig[];
+}
+
+export interface SyncCommunication {
+  protocol: string;
+  source: string;
+  target: string;
+  endpoints: string[];
+  loadBalancing: boolean;
+}
+
+export interface AsyncCommunication {
+  broker: string;
+  source: string;
+  target: string;
+  topic: string;
+  eventType: string;
+  serialization: string;
+}
+
+export interface ResilienceConfig {
+  source: string;
+  target: string;
+  circuitBreaker: { enabled: boolean; failureThreshold: number; waitDurationSeconds: number; slidingWindowSize: number; };
+  retry: { enabled: boolean; maxAttempts: number; backoffDelayMs: number; };
+  timeout: { enabled: boolean; durationMs: number; };
+  bulkhead: { enabled: boolean; maxConcurrentCalls: number; };
+  rateLimit: { enabled: boolean; limitForPeriod: number; periodDurationSeconds: number; };
+}
+
+export interface GatewayRoute {
+  id: string;
+  path: string;
+  serviceId: string;
+  stripPrefix: boolean;
+}
+
+export interface SagaStep {
+  service: string;
+  action: string;
+  compensation: string;
+}
+
+export interface SagaDefinition {
+  name: string;
+  steps: SagaStep[];
+}
+
+export interface MicroservicesConfig {
+  services: ServiceDefinition[];
+  syncCommunications: SyncCommunication[];
+  asyncCommunications: AsyncCommunication[];
+  resilience: ResilienceConfig[];
+  discovery: { type: string; };
+  gateway: {
+    routes: GatewayRoute[];
+    rateLimiting: { enabled: boolean; replenishRate: number; burstCapacity: number; };
+    authPerRoute: { [key: string]: string };
+    cors: { allowedOrigins: string[]; allowedMethods: string[]; allowedHeaders: string[]; };
+  };
+  orchestration: { sagaPattern: string; sagas: SagaDefinition[]; };
+  centralizedConfig: { configServer: boolean; profiles: string[]; secretManagement: string; };
+  sharedModules: { name: string; type: string; }[];
+  observability: { distributedTracing: string; metricsExporter: string; centralizedLogging: string; correlationHeaders: boolean; };
+}
+
+export interface MonolithicConfig {
+  modules: { name: string; description: string; dependsOn: string[]; }[];
+  packaging: string;
+  profiles: string[];
+  caching: { strategy: string; cachedEntities: string[]; };
+  scheduling: { enabled: boolean; jobs: { name: string; cronExpression: string; description: string; }[]; };
+  sessionStrategy: string;
+  database: { type: string; poolSize: number; connectionTimeout: number; };
+}
+
+export interface LayeredConfig {
+  layers: string[];
+  crossCuttingConcerns: string[];
+  dtoStrategy: string;
+  separateValidationLayer: boolean;
+  exceptionHandling: { globalHandler: boolean; customErrorCodes: string[]; errorResponseFormat: string; };
+  modules: { name: string; layers: string[]; }[];
+}
+
+export interface HexagonalConfig {
+  inboundPorts: string[];
+  outboundPorts: string[];
+  useCases: { name: string; description: string; inboundPort: string; outboundPorts: string[]; }[];
+  adapters: { portName: string; adapterType: string; configuration: { [key: string]: string }; }[];
+  domainModel: { entities: string[]; valueObjects: string[]; domainServices: string[]; };
+}
+
+export interface DddConfig {
+  boundedContexts: { name: string; description: string; responsibility: string; }[];
+  contextMapping: { source: string; target: string; relationType: string; }[];
+  aggregates: { contextName: string; name: string; rootEntity: string; invariants: string; }[];
+  domainEvents: { name: string; publisherContext: string; subscriberContexts: string[]; payloadFields: string[]; }[];
+  valueObjects: { name: string; fields: string[]; owningAggregate: string; }[];
+  domainServices: { name: string; contexts: string[]; operations: string[]; }[];
+}
+
+export interface CqrsConfig {
+  commands: { name: string; fields: string[]; handler: string; targetAggregate: string; }[];
+  queries: { name: string; fields: string[]; handler: string; readModel: string; }[];
+  writeStore: { databaseType: string; schemaStrategy: string; };
+  readStore: { databaseType: string; schemaStrategy: string; };
+  eventStore: { type: string; retentionPolicy: string; };
+  projections: { name: string; sourceEvents: string[]; rebuildStrategy: string; }[];
+  separationStrategy: string;
+}
+
+export interface EventDrivenConfig {
+  events: { name: string; schemaFormat: string; version: string; fields: string[]; }[];
+  producers: { service: string; events: string[]; }[];
+  consumers: { service: string; events: string[]; consumerGroup: string; }[];
+  broker: { type: string; clusterConfig: { [key: string]: string }; };
+  sagas: SagaDefinition[];
+  reliability: { deadLetterQueue: boolean; retryCount: number; idempotency: boolean; idempotencyStrategy: string; };
+  schemaRegistry: { type: string; compatibility: string; };
+  streamProcessing: { enabled: boolean; framework: string; };
+}
+
+export interface ModulithConfig {
+  modules: { name: string; responsibility: string; publicApi: string[]; }[];
+  allowedDependencies: { from: string; to: string; allowed: boolean; }[];
+  internalEvents: { name: string; publisherModule: string; subscriberModules: string[]; async: boolean; }[];
+  sharedKernelModules: string[];
+  archTests: { enabled: boolean; enforcementLevel: string; customRules: string[]; };
+}
+
 export interface WizardState {
   metadata: { groupId: string; artifactId: string; name: string; description: string; packageName: string; };
   versions: { javaVersion: string; springBootVersion: string; };
   buildTool: string;
-  architecture: { type: string; modules: string[]; enableCQRS: boolean; enableEventSourcing: boolean; };
+  architecture: {
+    type: string;
+    modules: string[];
+    enableCQRS: boolean;
+    enableEventSourcing: boolean;
+    microservices: MicroservicesConfig | null;
+    monolithic: MonolithicConfig | null;
+    layered: LayeredConfig | null;
+    hexagonal: HexagonalConfig | null;
+    ddd: DddConfig | null;
+    cqrs: CqrsConfig | null;
+    eventDriven: EventDrivenConfig | null;
+    modulith: ModulithConfig | null;
+  };
   dependencies: string[];
   security: { type: string; roles: string[]; } | null;
   infrastructure: { docker: boolean; dockerCompose: boolean; kubernetes: boolean; ci: string; };
@@ -18,7 +172,11 @@ export class WizardStateService {
     metadata: { groupId: 'com.example', artifactId: '', name: '', description: '', packageName: '' },
     versions: { javaVersion: '21', springBootVersion: '3.3.5' },
     buildTool: 'MAVEN',
-    architecture: { type: 'HEXAGONAL', modules: [], enableCQRS: false, enableEventSourcing: false },
+    architecture: {
+      type: 'HEXAGONAL', modules: [], enableCQRS: false, enableEventSourcing: false,
+      microservices: null, monolithic: null, layered: null, hexagonal: null,
+      ddd: null, cqrs: null, eventDriven: null, modulith: null
+    },
     dependencies: ['spring-boot-starter-web'],
     security: null,
     infrastructure: { docker: true, dockerCompose: true, kubernetes: false, ci: 'GITHUB_ACTIONS' },
@@ -31,7 +189,7 @@ export class WizardStateService {
 
   readonly stepLabels = [
     'Metadata', 'Versions', 'Build Tool', 'Architecture',
-    'Modules', 'Dependencies', 'Security', 'Infrastructure',
+    'Architecture Config', 'Dependencies', 'Security', 'Infrastructure',
     'Options', 'Review'
   ];
 
@@ -103,7 +261,15 @@ export class WizardStateService {
         type: config.architecture.type || 'HEXAGONAL',
         modules: config.architecture.modules || [],
         enableCQRS: config.architecture.enableCQRS || false,
-        enableEventSourcing: config.architecture.enableEventSourcing || false
+        enableEventSourcing: config.architecture.enableEventSourcing || false,
+        microservices: config.architecture.microservices || null,
+        monolithic: config.architecture.monolithic || null,
+        layered: config.architecture.layered || null,
+        hexagonal: config.architecture.hexagonal || null,
+        ddd: config.architecture.ddd || null,
+        cqrs: config.architecture.cqrs || null,
+        eventDriven: config.architecture.eventDriven || null,
+        modulith: config.architecture.modulith || null
       };
     }
     if (config.dependencies) {
